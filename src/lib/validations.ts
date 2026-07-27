@@ -521,7 +521,7 @@ export const duplicateDocumentSchema = z.object({
 
 export const createPublicShareLinkSchema = z.object({
   expiresInHours: z.number().int().min(1).max(24 * 90).optional().nullable(),
-  password: z.string().min(4).max(100).optional().nullable(),
+  password: z.string().min(8, "Şifre en az 8 karakter olmalı").max(100).optional().nullable(),
 });
 
 export const createDocumentTaskSchema = z.object({

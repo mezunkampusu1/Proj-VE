@@ -142,7 +142,7 @@ export function ShareDialog({ open, onClose, documentId, teamId, canManage }: Pr
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
+      if (!res.ok) throw new Error(json.details?.fieldErrors?.password?.[0] ?? json.error);
       setShareToken(json.token);
       setShareHasPassword(json.hasPassword);
       toast.success("Bağlantı oluşturuldu.");
