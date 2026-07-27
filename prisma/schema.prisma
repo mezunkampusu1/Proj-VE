@@ -1,0 +1,2863 @@
+// Prisma schema — Follow-Up: Yapay zeka destekli iş takip ve proje yönetim sistemi
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Auth.js (kimlik doğrulama) modelleri
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String? // Credentials provider için hash'lenmiş şifre
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  teamMemberships TeamMember[]
+  assignedTasks   TaskAssignee[]
+  createdTasks    Task[]        @relation("TaskCreator")
+  activityLogs    ActivityLog[]
+  notifications   Notification[]
+  taskComments    TaskComment[]
+  assignedRecurringTemplates RecurringTaskTemplate[] @relation("RecurringTaskAssignee")
+  createdRecurringTemplates  RecurringTaskTemplate[] @relation("RecurringTaskCreator")
+  recurringTemplateAssignments RecurringTemplateAssignee[] @relation("RecurringTemplateAssigneeUser")
+  spreadsheetOps               SpreadsheetOp[]
+  createdProjects               Project[]                   @relation("ProjectCreator")
+  projectMemberships            ProjectMember[]             @relation("ProjectMemberUser")
+
+  // Mezun Kampüsü operasyon modülleri (bkz. docs/ARCHITECTURE.md)
+  recordedDailyStats   DailyUserStat[]
+  createdAnnouncements Announcement[]
+  createdDates         ImportantDate[]
+  createdPrograms      AtlasProgram[]
+  atlasChanges         AtlasChangeLog[]
+  uploadedFiles        FileUpload[]
+  uploadedAttachments  TaskAttachment[]
+  fileMentions         FileMention[]
+  announcementMentions AnnouncementMention[]
+  importantDateMentions ImportantDateMention[]
+  atlasProgramMentions  AtlasProgramMention[]
+
+  // Modül 7 — Günlük Akış
+  dailyFlowEntries          DailyFlowEntry[]
+  dailyFlowReopenedEntries  DailyFlowEntry[]             @relation("DailyFlowReopenedBy")
+  dailyFlowEdits            DailyFlowEdit[]               @relation("DailyFlowEditedBy")
+  dailyFlowSetting          DailyFlowUserSetting?         @relation("DailyFlowSettingUser")
+  dailyFlowSettingsUpdated  DailyFlowUserSetting[]        @relation("DailyFlowSettingUpdatedBy")
+  dailyFlowTeamSettingsUpdated DailyFlowTeamSetting[]     @relation("DailyFlowTeamSettingUpdatedBy")
+  dailyFlowNotificationPref DailyFlowNotificationPreference?
+
+  // Modül 8 — Ortak Alan
+  ownedDocuments        Document[]           @relation("DocumentOwner")
+  createdDocuments      Document[]           @relation("DocumentCreator")
+  lastEditedDocuments   Document[]           @relation("DocumentLastEditor")
+  pinnedDocuments       Document[]           @relation("DocumentPinnedBy")
+  createdFolders        DocumentFolder[]
+  documentComments      DocumentComment[]    @relation("DocumentCommentAuthor")
+  resolvedComments      DocumentComment[]    @relation("DocumentCommentResolver")
+  documentSuggestions   DocumentSuggestion[] @relation("DocumentSuggestionAuthor")
+  decidedSuggestions    DocumentSuggestion[] @relation("DocumentSuggestionDecider")
+  documentVersions      DocumentVersion[]
+  documentFavorites     DocumentFavorite[]
+  documentFollows       DocumentFollower[]
+  permissionsGranted    DocumentPermission[] @relation("DocumentPermissionGrantedBy")
+  permissionsReceived   DocumentPermission[] @relation("DocumentPermissionSubjectUser")
+  approvalsRequested    ApprovalRequest[]    @relation("ApprovalRequestedBy")
+  approvalsCurrentlyAssigned ApprovalRequest[] @relation("ApprovalCurrentApprover")
+  approvalsDecided      ApprovalRequest[]    @relation("ApprovalDecidedBy")
+  documentAuditLogs     DocumentAuditLog[]
+  documentNotificationPref DocumentNotificationPreference?
+
+  // Modül 9 — Finans Takip
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  financeRecordsAsPerson    FinanceTransaction[]       @relation("FinancePerson")
+  financeRecordsCreated     FinanceTransaction[]       @relation("FinanceRecordCreator")
+  financeRecordsEdited      FinanceTransaction[]       @relation("FinanceRecordEditor")
+  financeRecordVisibility   FinanceRecordVisibleUser[]
+  financeAttachments        FinanceAttachment[]
+  financeChangeLogs         FinanceChangeLog[]
+  financeExchangeRatesSet   FinanceExchangeRate[]
+  financeRecurringTemplatesAsPerson FinanceRecurringTemplate[] @relation("FinanceRecurringPerson")
+  financeRecurringTemplatesCreated  FinanceRecurringTemplate[] @relation("FinanceRecurringCreator")
+  financePermission         FinancePermission?         @relation("FinancePermissionUser")
+  financePermissionsUpdated FinancePermission[]        @relation("FinancePermissionUpdatedBy")
+
+  // Modül 10 — Sosyal Medya, İçerik ve SEO Yönetimi
+  contentPermission         ContentPermission?         @relation("ContentPermissionUser")
+  contentPermissionsUpdated ContentPermission[]        @relation("ContentPermissionUpdatedBy")
+
+  createdSocialContents     SocialContent[] @relation("SocialContentCreator")
+  designedSocialContents    SocialContent[] @relation("SocialContentDesigner")
+  editedSocialContentVideos SocialContent[] @relation("SocialContentVideoEditor")
+  approvedSocialContents    SocialContent[] @relation("SocialContentApprover")
+  publishedSocialContents   SocialContent[] @relation("SocialContentPublisher")
+  socialContentPerformanceRecords SocialContentPerformance[]
+
+  createdBlogContents     BlogContent[] @relation("BlogContentCreator")
+  editedBlogContents      BlogContent[] @relation("BlogContentEditor")
+  seoReviewedBlogContents BlogContent[] @relation("BlogContentSeoReviewer")
+  approvedBlogContents    BlogContent[] @relation("BlogContentApprover")
+
+  createdSeoWorks  SeoWork[] @relation("SeoWorkCreator")
+  assignedSeoWorks SeoWork[] @relation("SeoWorkAssignee")
+  approvedSeoWorks SeoWork[] @relation("SeoWorkApprover")
+
+  createdWebsiteWorks  WebsiteWork[] @relation("WebsiteWorkCreator")
+  reviewedWebsiteWorks WebsiteWork[] @relation("WebsiteWorkReviewer")
+  approvedWebsiteWorks WebsiteWork[] @relation("WebsiteWorkApprover")
+
+  dailyWorkReports         DailyWorkReport[] @relation("DailyWorkReportUser")
+  reviewedDailyWorkReports DailyWorkReport[] @relation("DailyWorkReportReviewer")
+
+  contentComments        ContentComment[]
+  contentCommentMentions ContentCommentMention[]
+  contentMentions        ContentMention[]
+  contentAssetsAdded     ContentAsset[]
+
+  requestedContentRevisions ContentRevision[] @relation("ContentRevisionRequestedBy")
+  assignedContentRevisions  ContentRevision[] @relation("ContentRevisionAssignedTo")
+
+  aiGenerations AiGeneration[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Takım / yetkilendirme
+// ---------------------------------------------------------------------------
+
+enum TeamRole {
+  ADMIN
+  MEMBER
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members  TeamMember[]
+  projects Project[]
+  invites  TeamInvite[]
+
+  activityLogs ActivityLog[]
+
+  // Modül 8 — Ortak Alan
+  documents           Document[]
+  documentFolders     DocumentFolder[]
+  documentPermissions DocumentPermission[]
+
+  // Modül 7 — Günlük Akış: takım genelindeki varsayılan ara hakkı (bkz. görev #169)
+  dailyFlowTeamSetting DailyFlowTeamSetting?
+
+  // Modül 10 — Sosyal Medya, İçerik ve SEO Yönetimi
+  socialContents SocialContent[]
+  blogContents   BlogContent[]
+  seoWorks       SeoWork[]
+  websiteWorks   WebsiteWork[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  role     TeamRole @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+model TeamInvite {
+  id        String       @id @default(cuid())
+  teamId    String
+  email     String
+  role      TeamRole     @default(MEMBER)
+  token     String       @unique @default(cuid())
+  status    InviteStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  expiresAt DateTime
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("team_invites")
+}
+
+// ---------------------------------------------------------------------------
+// Proje / görev yönetimi
+// ---------------------------------------------------------------------------
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+/// Bir projenin (panonun) tümü iki şekilden biri olabilir: DATED (tarih
+/// bazlı — gün gezinmesi gösterilir, görevler o güne ait `scheduledDate`e
+/// bağlıdır, "her gün tekrarla" şablonları çalışır — mevcut/varsayılan
+/// davranış) veya FIXED (sabit — düz Trello panosu gibi, gün gezinmesi
+/// yok, tüm görevler tarihten bağımsız her zaman görünür ve görev bazlı
+/// ilerlenir). Proje oluşturma anında seçilir, sonradan değiştirilemez.
+enum ProjectKind {
+  DATED
+  FIXED
+}
+
+/// Kullanıcı talebi #6 (netleştirilmiş hâli — kullanıcı ilk yorumda bunun tek
+/// tek görev bazında olduğunu belirtti, sonra "ilk yeni proje oluştur
+/// kısmında" sorulması gerektiğini açıkladı): proje oluşturulurken kimler
+/// etiketlenecek sorulur; hiç kimse etiketlenmezse proje yalnızca
+/// oluşturana görünür. `creatorId` NULLABLE — bu alan migration'dan önce
+/// oluşturulmuş projelerde bilinmiyor; bu eski projeler (bkz. Files
+/// modülündeki "no tag = herkese açık depo" deseniyle aynı mantık)
+/// görünürlük filtresinde her zaman herkese açık sayılır, geriye dönük
+/// hiçbir projeyi gizlemez.
+model Project {
+  id          String        @id @default(cuid())
+  teamId      String
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  /// DATED: gün gezinmeli, tarih bazlı pano (varsayılan). FIXED: sabit,
+  /// tarihten bağımsız düz Trello panosu (bkz. ProjectKind).
+  kind        ProjectKind   @default(DATED)
+  creatorId   String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  team    Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  creator User?        @relation("ProjectCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  tasks   Task[]
+  columns TaskColumn[]
+  recurringTemplates RecurringTaskTemplate[]
+  members ProjectMember[]
+
+  activityLogs ActivityLog[]
+  documents     Document[]
+
+  @@map("projects")
+}
+
+/// Proje oluşturulurken etiketlenen kişiler — görünürlük filtresinde
+/// creatorId ile birlikte kullanılır (bkz. requireProjectAccess).
+model ProjectMember {
+  projectId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation("ProjectMemberUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, userId])
+  @@map("project_members")
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+/// Bir görev iki şekilden biri olabilir: DATED (tarih bazlı — belirli bir
+/// `scheduledDate`e bağlı, gün gezinmesiyle o günün panosunda görünür) veya
+/// FIXED (sabit — tarihten bağımsız, hangi gün seçilirse seçilsin panoda
+/// hep görünür kalır). Oluşturma anında seçilir, sonradan değiştirilemez.
+enum TaskKind {
+  DATED
+  FIXED
+}
+
+/// Bir projenin panosundaki durum sütunu (Trello listesi gibi). Sabit
+/// TaskStatus enum'unun yerini alır — her proje kendi sütunlarını
+/// ekleyip/çıkarabilir, yeniden adlandırabilir, sırasını değiştirebilir.
+/// `isDoneColumn`, "tamamlandı" sayılacak sütun(lar)ı işaretler; pano
+/// dışındaki (dashboard, özet) tüm "bitti mi" sorguları bu bayrağa bakar.
+model TaskColumn {
+  id           String   @id @default(cuid())
+  projectId    String
+  name         String
+  order        Int      @default(0)
+  isDoneColumn Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project             Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks                Task[]
+  recurringTemplates   RecurringTaskTemplate[]
+
+  @@index([projectId, order])
+  @@map("task_columns")
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  projectId   String
+  columnId    String
+  title       String
+  description String?
+  /// Zengin metin (Tiptap JSON) sürümü — NULL ise eski düz metin görev,
+  /// dolu ise okuma modu bunu render eder. `description` alanı her zaman
+  /// düz metin olarak paralel tutulur (bkz. lib/ai.ts AI bağlam tüketicisi).
+  /// Desen, TaskComment.bodyJson ile birebir aynıdır (bkz. görev #200/#318).
+  descriptionJson Json?
+  priority    TaskPriority @default(MEDIUM)
+  position    Int          @default(0)
+  /// DATED: gün bazlı, FIXED: tarihten bağımsız sabit görev (bkz. TaskKind).
+  kind        TaskKind     @default(DATED)
+  /// Görevin panoda hangi güne ait olarak gösterileceği tarih ("planlanan
+  /// tarih") — Duyurular/Tarihler/Atlas'taki `entryDate` deseniyle aynı
+  /// mantık: varsayılan bugün, ama ekip üyesi yarın/ileri bir tarih için de
+  /// görev açabilir. `dueDate` (son teslim tarihi/deadline) ile bilinçli
+  /// olarak ayrı tutulur — biri "ne zaman göreceğim", diğeri "ne zamana
+  /// kadar bitmeli" sorusuna cevap verir. FIXED görevlerde NULL kalır —
+  /// bu görevler hangi gün seçilirse seçilsin panoda hep gösterilir.
+  scheduledDate DateTime?  @db.Date
+  dueDate     DateTime?
+  /// Görev, isDoneColumn=true olan bir sütuna taşındığında otomatik
+  /// doldurulur; başka bir sütuna geri taşınırsa temizlenir.
+  completedAt DateTime?
+  aiSummary   String?      @db.Text
+
+  creatorId  String
+
+  /// Bu görev bir RecurringTaskTemplate'ten otomatik türediyse şablona
+  /// işaret eder — aynı şablon aynı gün için birden fazla görev üretmesin
+  /// diye `[recurringTemplateId, scheduledDate]` üzerinde tekillik var.
+  /// Şablon silinse bile geçmişte türetilmiş görevler kaybolmasın diye
+  /// SetNull kullanılır.
+  recurringTemplateId String?
+
+  /// Bu görev Ortak Alan'da bir dokümanın içinden (kontrol listesi maddesi
+  /// veya yorum) oluşturulduysa kaynağına işaret eder — doküman silinse
+  /// bile görev kaybolmasın diye SetNull kullanılır (bkz. proje kuralı:
+  /// "mevcut görev modülüne bağlanmalı, yeni bir görev sistemi kurulmamalı").
+  sourceDocumentId        String?
+  sourceDocumentCommentId String?
+  /// Dokümandaki kontrol listesi maddesinin kararlı kimliği — görev
+  /// tamamlandığında ilgili kutunun otomatik işaretlenebilmesi için
+  /// editördeki node'a geri eşlenir.
+  documentBlockId         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project           Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  column            TaskColumn              @relation(fields: [columnId], references: [id], onDelete: Restrict)
+  creator           User                    @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  recurringTemplate RecurringTaskTemplate?  @relation(fields: [recurringTemplateId], references: [id], onDelete: SetNull)
+  sourceDocument        Document?        @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  sourceDocumentComment DocumentComment? @relation(fields: [sourceDocumentCommentId], references: [id], onDelete: SetNull)
+
+  subtasks     SubTask[]
+  comments     TaskComment[]
+  activityLogs ActivityLog[]
+  tags         TaskTag[]
+  attachments  TaskAttachment[]
+  assignees    TaskAssignee[]
+  // Modül 10 — Sosyal Medya, İçerik ve SEO Yönetimi: bir günlük çalışma
+  // kaleminin "İlgili görev" alanı buraya işaret edebilir.
+  contentWorkItems DailyWorkItem[]
+
+  @@unique([recurringTemplateId, scheduledDate])
+  @@index([projectId, columnId])
+  @@index([projectId, scheduledDate])
+  @@map("tasks")
+}
+
+/// Bir göreve birden fazla kişi atanabilir (bkz. görev #196 — kullanıcı
+/// isteği: "bazen 3 kişiye atayabilirim"). RecurringTaskTemplate BİLİNÇLİ
+/// OLARAK tek atananlı (assigneeId) kalmaya devam eder — şablon UI'ında
+/// çoklu atama istenmedi, kapsam netliği için basit tutuldu; şablondan
+/// türeyen her Task, türeme anında şablonun tek atananını bu tabloya tek
+/// satır olarak kopyalar.
+model TaskAssignee {
+  taskId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, userId])
+  @@map("task_assignees")
+}
+
+/// "Her gün" diye tanımlanan tekrarlayan görevler için şablon. Cron
+/// gerektirmez: pano her açıldığında (GET /api/projects/[id]/tasks) o gün
+/// için henüz türetilmemiş aktif şablonlar taranır ve eksikse o günün
+/// tarihiyle yeni bir Task satırı oluşturulur (bkz. src/lib/recurring-tasks.ts).
+/// Her günün kendi Task satırı/checklist'i/tamamlanma durumu olduğu için
+/// geçmiş günler ayrı ayrı görünür ve raporlanabilir kalır.
+///
+/// `assigneeId` (tek kişi) alanı ESKİ tasarımdan kalma ve artık YAZILMIYOR —
+/// kullanıcı talebi #11 ("günlük plan görev içerisinde etiket") üzerine
+/// şablonlar da normal görevler gibi ÇOKLU kişi etiketlemeyi destekliyor
+/// (bkz. RecurringTemplateAssignee). Alan yalnızca migration'dan önce
+/// oluşturulmuş eski şablonlarla geriye dönük uyumluluk için (bkz.
+/// ensureRecurringTasksForDate'teki fallback) korunuyor.
+model RecurringTaskTemplate {
+  id          String       @id @default(cuid())
+  projectId   String
+  columnId    String
+  title       String
+  description String?
+  priority    TaskPriority @default(MEDIUM)
+  assigneeId  String?
+  active      Boolean      @default(true)
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  column    TaskColumn @relation(fields: [columnId], references: [id], onDelete: Restrict)
+  assignee  User?      @relation("RecurringTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy User       @relation("RecurringTaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  assignees      RecurringTemplateAssignee[]
+  generatedTasks Task[]
+
+  @@index([projectId, active])
+  @@map("recurring_task_templates")
+}
+
+/// Kullanıcı talebi #11: şablon oluşturulurken/güncellenirken birden fazla
+/// kişi etiketlenebilsin — TaskAssignee ile birebir aynı desen. Türeyen her
+/// Task, şablonun bu listesini kendi task_assignees satırlarına kopyalar.
+model RecurringTemplateAssignee {
+  templateId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  template RecurringTaskTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user     User                  @relation("RecurringTemplateAssigneeUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([templateId, userId])
+  @@map("recurring_template_assignees")
+}
+
+/// Görev #197: resim/YouTube/PDF eki. UPLOAD ile LINK türü aynı listede
+/// birlikte gösterilir — FileUpload modelindeki UPLOAD/LINK ayrımıyla aynı
+/// deseni izler (bkz. FileUploadKind). UPLOAD türünde fileName/storedPath/
+/// fileSize/mimeType doludur, externalUrl NULL'dur. LINK türünde (örn. bir
+/// YouTube bağlantısı) yalnızca externalUrl ve görünen ad için fileName
+/// doludur; storedPath/fileSize/mimeType NULL'dur (diskte gerçek bir dosya
+/// yoktur).
+model TaskAttachment {
+  id           String         @id @default(cuid())
+  taskId       String
+  kind         FileUploadKind @default(UPLOAD)
+  fileName     String?
+  storedPath   String?
+  fileSize     Int?
+  mimeType     String?
+  externalUrl  String?
+  /// Görevlendirme revizyonu: bu ek, görev kartında küçük bir önizleme
+  /// (resim/YouTube thumbnail) olarak gösterilsin mi? İsteğe bağlı, kişi
+  /// bazında ek üzerinden açılıp kapatılır — varsayılan kapalı (bkz.
+  /// görev #199, "kartta görünsün görünmesin gibi bir tik").
+  showOnCard   Boolean        @default(false)
+  uploadedById String
+  createdAt    DateTime       @default(now())
+
+  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@map("task_attachments")
+}
+
+model SubTask {
+  id        String   @id @default(cuid())
+  taskId    String
+  title     String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("subtasks")
+}
+
+/// Görevlendirme revizyonu (2026-07): notlara kalın/italik/liste/resim
+/// destekli zengin metin eklendi. `body` düz metin karşılığı olarak
+/// KALMAYA devam eder (bildirim mesajları, arama, ve zengin editör
+/// öncesi eski yorumlar için) — zengin biçimlendirilmiş bir not
+/// gönderildiğinde `bodyJson`'a Tiptap JSON içeriği de yazılır ve UI
+/// varsa onu, yoksa düz `body`'yi render eder. @mention artık metne
+/// gömülü bir belirteç yerine API'ye doğrudan `mentionedUserIds` dizisi
+/// olarak gönderilir (bkz. POST /api/tasks/[taskId]/comments) — eski
+/// `@[Ad](id)` metne-gömme deseni (bkz. extractMentionedUserIds) yalnızca
+/// Ortak Alan doküman yorumlarında kullanılmaya devam ediyor.
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  body      String   @db.Text
+  bodyJson  Json?
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("task_comments")
+}
+
+// ---------------------------------------------------------------------------
+// Aktivite akışı / bildirimler
+// ---------------------------------------------------------------------------
+
+enum ActivityAction {
+  PROJECT_CREATED
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_STATUS_CHANGED
+  TASK_ASSIGNED
+  TASK_DELETED
+  COMMENT_ADDED
+  TASK_COLUMN_CREATED
+  TASK_COLUMN_UPDATED
+  TASK_COLUMN_DELETED
+  RECURRING_TASK_CREATED
+  RECURRING_TASK_UPDATED
+  RECURRING_TASK_DELETED
+  MEMBER_JOINED
+  MEMBER_ROLE_CHANGED
+  // Faz 3+ modülleri (bkz. docs/ARCHITECTURE.md §6)
+  DAILY_STAT_RECORDED
+  ANNOUNCEMENT_CREATED
+  ANNOUNCEMENT_UPDATED
+  ANNOUNCEMENT_DELETED
+  ANNOUNCEMENT_TYPE_CREATED
+  ANNOUNCEMENT_IMPORTED
+  DATE_CREATED
+  DATE_UPDATED
+  DATE_DELETED
+  DATE_TYPE_CREATED
+  DATE_IMPORTED
+  ATLAS_PROGRAM_CREATED
+  ATLAS_PROGRAM_UPDATED
+  ATLAS_PROGRAM_REMOVED
+  INSTITUTE_CREATED
+  INSTITUTE_UPDATED
+  INSTITUTE_DELETED
+  INSTITUTE_IMPORTED
+  FILE_UPLOADED
+  FILE_DELETED
+  ATTACHMENT_ADDED
+  ATTACHMENT_REMOVED
+  UNIVERSITY_CREATED
+  UNIVERSITY_UPDATED
+  UNIVERSITY_IMPORTED
+  DAILY_FLOW_STARTED
+  DAILY_FLOW_BREAK_STARTED
+  DAILY_FLOW_BREAK_ENDED
+  DAILY_FLOW_COMPLETED
+  DAILY_FLOW_EDITED
+  DAILY_FLOW_REOPENED
+  DAILY_FLOW_SETTING_UPDATED
+  DOCUMENT_CREATED
+  DOCUMENT_UPDATED
+  DOCUMENT_DELETED
+  DOCUMENT_RESTORED
+  DOCUMENT_SHARED
+  DOCUMENT_STATUS_CHANGED
+  DOCUMENT_APPROVED
+  DOCUMENT_FOLDER_CREATED
+  // Modül 9 — Finans Takip
+  FINANCE_RECORD_CREATED
+  FINANCE_RECORD_UPDATED
+  FINANCE_RECORD_DELETED
+  FINANCE_RECORD_STATUS_CHANGED
+  FINANCE_CATEGORY_CREATED
+  FINANCE_CATEGORY_UPDATED
+  FINANCE_CATEGORY_DELETED
+  FINANCE_RATE_UPDATED
+  FINANCE_RECURRING_CREATED
+  FINANCE_RECURRING_UPDATED
+  FINANCE_RECURRING_DELETED
+  FINANCE_PERMISSION_UPDATED
+  // Modül 10 — Sosyal Medya, İçerik ve SEO Yönetimi
+  CONTENT_CREATED
+  CONTENT_UPDATED
+  CONTENT_DELETED
+  CONTENT_RESTORED
+  CONTENT_STATUS_CHANGED
+  CONTENT_APPROVED
+  CONTENT_REVISION_REQUESTED
+  CONTENT_PUBLISHED
+  CONTENT_ASSET_ADDED
+  CONTENT_ASSET_REMOVED
+  CONTENT_PERMISSION_UPDATED
+  DAILY_WORK_REPORT_SUBMITTED
+  DAILY_WORK_REPORT_REVIEWED
+  AI_CONTENT_GENERATED
+}
+
+/// Sistem genelindeki "işlem geçmişi" — kim, ne yaptı, ne zaman, hangi
+/// modülde, hangi IP'den. Her yeni modül kendi nullable ilişkisini bu
+/// tabloya ekler; tek, birleşik ve filtrelenebilir bir akış korunur.
+enum ModuleName {
+  TASKS
+  ANNOUNCEMENTS
+  DATES
+  ATLAS
+  FILES
+  USER_REPORTS
+  TEAM
+  UNIVERSITIES
+  DAILY_FLOW
+  DOCUMENTS
+  FINANCE
+  CONTENT
+}
+
+model ActivityLog {
+  id        String         @id @default(cuid())
+  teamId    String
+  projectId String?
+  taskId    String?
+  userId    String
+  action    ActivityAction
+  message   String
+  module    ModuleName?
+  ipAddress String?
+  createdAt DateTime       @default(now())
+
+  team    Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task    Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, createdAt])
+  @@index([module, createdAt])
+  @@map("activity_logs")
+}
+
+/// Bildirim kartında hangi ikon/vurgunun gösterileceğini belirler (bkz.
+/// notification-bell.tsx). GENERAL, türü belirtilmeyen eski kayıtlar ve
+/// takıma davet gibi tek seferlik bildirimler için varsayılandır.
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_COMMENT
+  TASK_MENTIONED
+  RECURRING_ASSIGNED
+  FILE_MENTIONED
+  ANNOUNCEMENT_MENTIONED
+  IMPORTANT_DATE_MENTIONED
+  ATLAS_PROGRAM_MENTIONED
+  TEAM_INVITED
+  DAILY_FLOW_EVENT
+  DOCUMENT_SHARED
+  DOCUMENT_MENTIONED
+  DOCUMENT_COMMENT
+  DOCUMENT_APPROVAL
+  DOCUMENT_UPDATE
+  FINANCE_PAYMENT_DUE
+  FINANCE_PAYMENT_OVERDUE
+  PROJECT_MENTIONED
+  // Modül 10 — Sosyal Medya, İçerik ve SEO Yönetimi
+  CONTENT_MENTIONED
+  CONTENT_ASSIGNED
+  CONTENT_COMMENT
+  CONTENT_REVISION_REQUESTED
+  CONTENT_APPROVED
+  CONTENT_REJECTED
+  CONTENT_PUBLISH_REMINDER
+  CONTENT_DEADLINE_REMINDER
+  DAILY_WORK_REPORT_APPROVED
+  DAILY_WORK_REPORT_REVISION
+  GENERAL
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType @default(GENERAL)
+  title     String
+  message   String
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Ortak etiket sistemi (Modül 4) — modül başına açık join tabloları
+// kullanılır; polimorfik tek tablo yerine tip güvenliği tercih edilmiştir.
+// ---------------------------------------------------------------------------
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  color     String?
+  createdAt DateTime @default(now())
+
+  announcements   AnnouncementTag[]
+  importantDates  ImportantDateTag[]
+  tasks           TaskTag[]
+  atlasPrograms   AtlasProgramTag[]
+  documents       DocumentTag[]
+  financeTransactions FinanceTransactionTag[]
+
+  @@map("tags")
+}
+
+model TaskTag {
+  taskId String
+  tagId  String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, tagId])
+  @@map("task_tags")
+}
+
+// ---------------------------------------------------------------------------
+// Üniversite (tüm operasyon modüllerinin referans verisi)
+// ---------------------------------------------------------------------------
+
+model University {
+  id        String   @id @default(cuid())
+  name      String
+  city      String?
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  announcements  Announcement[]
+  importantDates ImportantDate[]
+  files          FileUpload[]
+
+  @@map("universities")
+}
+
+// ---------------------------------------------------------------------------
+// Modül 1 — Kullanıcı Raporları
+// ---------------------------------------------------------------------------
+
+model DailyUserStat {
+  id                  String   @id @default(cuid())
+  date                DateTime @unique @db.Date
+  newUserCount        Int      @default(0)
+  emailVerifiedCount  Int      @default(0)
+  phoneVerifiedCount  Int      @default(0)
+  /// Günlük veri girişinin yanına bırakılan kısa not/açıklama — isteğe
+  /// bağlıdır (bkz. proje talebi: "günlük veri girişinin yanına ufak bir
+  /// not alanı koy").
+  note                String?  @db.Text
+  recordedById        String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  recordedBy User @relation(fields: [recordedById], references: [id], onDelete: Cascade)
+
+  @@map("daily_user_stats")
+}
+
+// ---------------------------------------------------------------------------
+// Modül 2 — Duyurular
+// ---------------------------------------------------------------------------
+
+model AnnouncementType {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  announcements Announcement[]
+
+  @@map("announcement_types")
+}
+
+model Announcement {
+  id          String   @id @default(cuid())
+  universityId String
+  typeId      String
+  title       String
+  description String?  @db.Text
+  sourceUrl   String?
+  /// Duyurunun fiilen "girildiği" iş günü (raporlama/takip için birincil
+  /// tarih boyutu) — sistemin kaydı oluşturduğu `createdAt` zaman damgasından
+  /// bilinçli olarak ayrı tutulur, çünkü ekip üyeleri geçmiş bir günün
+  /// duyurusunu sonradan da girebilir.
+  entryDate   DateTime @db.Date
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  university University            @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  type       AnnouncementType      @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  createdBy  User                  @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  tags       AnnouncementTag[]
+  mentions   AnnouncementMention[]
+
+  @@index([universityId, createdAt])
+  @@index([entryDate])
+  @@map("announcements")
+}
+
+/// Bir duyuruda kişi etiketleme (bkz. proje talebi: "Yeni etiket kısmında
+/// üyeler gelebilmeli... etiketlendiğinde bildirim düşmeli") — kategori
+/// etiketlerinden (Tag/AnnouncementTag) tamamen ayrı, FileMention ile
+/// birebir aynı desen: kişi seçilince ANNOUNCEMENT_MENTIONED bildirimi
+/// gönderilir.
+model AnnouncementMention {
+  announcementId String
+  userId         String
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, userId])
+  @@map("announcement_mentions")
+}
+
+model AnnouncementTag {
+  announcementId String
+  tagId          String
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, tagId])
+  @@map("announcement_tags")
+}
+
+// ---------------------------------------------------------------------------
+// Modül 3 — Tarihler
+// ---------------------------------------------------------------------------
+
+model ImportantDateType {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique
+
+  dates ImportantDate[]
+
+  @@map("important_date_types")
+}
+
+model ImportantDate {
+  id           String    @id @default(cuid())
+  universityId String
+  typeId       String
+  title        String
+  /// Kaydın fiilen "girildiği" iş günü — Duyurular'daki `entryDate` ile
+  /// birebir aynı mantık. Ekip üyesi bu kaydı bugün oluşturur, varsayılan
+  /// olarak bugünün tarihidir ama geçmiş bir günün kaydı da sonradan
+  /// girilebildiği için serbestçe değiştirilebilir.
+  entryDate    DateTime  @db.Date
+  /// Bu önemli tarihin fiilen sona erdiği/gerçekleştiği tarih (örn. başvuru
+  /// bitiş günü). Kayıt oluşturulurken çoğu zaman henüz bilinmez — "arkadaşlar
+  /// ekleyecek" geri bildirimi üzerine opsiyonel bırakıldı, netleştiğinde
+  /// düzenlemeden eklenir/güncellenir.
+  date         DateTime? @db.Date
+  description  String?   @db.Text
+  createdById  String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  university University         @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  type       ImportantDateType  @relation(fields: [typeId], references: [id], onDelete: Restrict)
+  createdBy  User               @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  tags       ImportantDateTag[]
+  mentions   ImportantDateMention[]
+
+  @@index([universityId, createdAt])
+  @@index([entryDate])
+  @@index([date])
+  @@map("important_dates")
+}
+
+model ImportantDateTag {
+  importantDateId String
+  tagId           String
+
+  importantDate ImportantDate @relation(fields: [importantDateId], references: [id], onDelete: Cascade)
+  tag           Tag           @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([importantDateId, tagId])
+  @@map("important_date_tags")
+}
+
+/// Bir tarih kaydında kişi etiketleme — kategori etiketinden (ImportantDateTag,
+/// artık UI'da kullanılmıyor) tamamen ayrı bir ilişki. AnnouncementMention
+/// ile birebir aynı desen (bkz. kullanıcı talebi: "Tarihler kısmında kişi
+/// etiketle yok onu ekle").
+model ImportantDateMention {
+  importantDateId String
+  userId          String
+
+  importantDate ImportantDate @relation(fields: [importantDateId], references: [id], onDelete: Cascade)
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([importantDateId, userId])
+  @@map("important_date_mentions")
+}
+
+// ---------------------------------------------------------------------------
+// Modül 5 — Atlas (lisansüstü program yönetimi)
+// ---------------------------------------------------------------------------
+
+enum DegreeLevel {
+  YUKSEK_LISANS
+  DOKTORA
+}
+
+enum AtlasChangeAction {
+  CREATED
+  UPDATED
+  REMOVED
+}
+
+/// Enstitüler, üniversitelerden bağımsız yönetilen ayrı bir referans
+/// veri kümesidir (bkz. proje talebi: "enstitüleri üniversitelerden
+/// bağımsız eklicez"). University ile birebir aynı desende (slug/isActive/
+/// updatedAt) tutulur ki aynı Excel içe aktarma / aktif-pasif yönetim
+/// akışı buraya da uygulanabilsin.
+model Institute {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  programs AtlasProgram[]
+
+  @@map("institutes")
+}
+
+model AtlasProgram {
+  id          String      @id @default(cuid())
+  instituteId String
+  name        String
+  degreeLevel DegreeLevel
+  isActive    Boolean     @default(true)
+  /// Programın fiilen "girildiği" iş günü — Duyurular/Tarihler'deki
+  /// `entryDate` ile aynı mantık. Ekip üyesi bugün girer, varsayılan
+  /// bugünün tarihidir ama geçmiş bir günün kaydı da sonradan girilebildiği
+  /// için serbestçe değiştirilebilir.
+  entryDate   DateTime    @db.Date
+  createdById String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  institute  Institute         @relation(fields: [instituteId], references: [id], onDelete: Cascade)
+  createdBy  User              @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  tags       AtlasProgramTag[]
+  changeLogs AtlasChangeLog[]
+  mentions   AtlasProgramMention[]
+
+  @@index([entryDate])
+  @@index([updatedAt])
+  @@map("atlas_programs")
+}
+
+model AtlasProgramTag {
+  atlasProgramId String
+  tagId          String
+
+  program AtlasProgram @relation(fields: [atlasProgramId], references: [id], onDelete: Cascade)
+  tag     Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([atlasProgramId, tagId])
+  @@map("atlas_program_tags")
+}
+
+/// Bir Atlas programında kişi etiketleme — kategori etiketinden
+/// (AtlasProgramTag, artık UI'da kullanılmıyor) tamamen ayrı bir ilişki.
+/// AnnouncementMention ile birebir aynı desen (bkz. kullanıcı talebi:
+/// "Atlas kısmında kişi etiketle yok onu ekle").
+model AtlasProgramMention {
+  atlasProgramId String
+  userId         String
+
+  program AtlasProgram @relation(fields: [atlasProgramId], references: [id], onDelete: Cascade)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([atlasProgramId, userId])
+  @@map("atlas_program_mentions")
+}
+
+/// Bir AtlasProgram üzerinde değişen her alan için ayrı bir satır oluşur;
+/// eski değer, yeni değer, değişiklik tarihi ve kişisi otomatik kaydedilir.
+model AtlasChangeLog {
+  id          String            @id @default(cuid())
+  programId   String
+  action      AtlasChangeAction
+  field       String?
+  oldValue    String?
+  newValue    String?
+  changedById String
+  changedAt   DateTime          @default(now())
+
+  program   AtlasProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  changedBy User         @relation(fields: [changedById], references: [id], onDelete: Cascade)
+
+  @@index([programId, changedAt])
+  @@map("atlas_change_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Modül 6 — Dosyalar
+// ---------------------------------------------------------------------------
+
+/// UPLOAD: gerçek bir dosya diske yüklenir (storedPath/fileSize/mimeType
+/// dolu). LINK: yalnızca dış bir bağlantı kaydedilir (externalUrl dolu,
+/// dosyayla ilgili alanlar boş) — örn. Google Drive/Dropbox paylaşım
+/// linki gibi sunucuda saklanmayan kaynaklar için.
+enum FileUploadKind {
+  UPLOAD
+  LINK
+}
+
+model FileUpload {
+  id           String         @id @default(cuid())
+  universityId String?
+  kind         FileUploadKind @default(UPLOAD)
+  /// Kullanıcının girdiği görünen başlık — boşsa listede fileName (UPLOAD)
+  /// ya da externalUrl (LINK) gösterilir.
+  title        String?
+  description  String?        @db.Text
+  /// UPLOAD türünde orijinal dosya adı; LINK türünde NULL.
+  fileName     String?
+  /// UPLOAD türünde diskteki depolama yolu; LINK türünde NULL.
+  storedPath   String?
+  /// LINK türünde dış bağlantı; UPLOAD türünde NULL.
+  externalUrl  String?
+  fileSize     Int?
+  mimeType     String?
+  uploadedById String
+  createdAt    DateTime       @default(now())
+
+  university University? @relation(fields: [universityId], references: [id], onDelete: SetNull)
+  uploadedBy User        @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  mentions   FileMention[]
+  // Modül 10 — Sosyal Medya, İçerik ve SEO Yönetimi: aynı dosyanın birden
+  // fazla içerik kaydında yeniden kullanılabilmesini sağlayan bağ tablosu.
+  contentAssets ContentAsset[]
+
+  @@index([universityId, createdAt])
+  @@map("file_uploads")
+}
+
+/// Bir dosya eklenirken belirli ekip üyeleri "etiketlenebilir" — bu, kategori
+/// etiketi değil, o kişiye "bu dosya seninle ilgili" bildirimi gönderme
+/// amaçlıdır (bkz. POST /api/files, notifyUser çağrısı).
+model FileMention {
+  fileUploadId String
+  userId       String
+
+  file FileUpload @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([fileUploadId, userId])
+  @@map("file_mentions")
+}
+
+// ---------------------------------------------------------------------------
+// Modül 7 — Günlük Akış (klasik "mesai takip" değil: üyenin kendi gününü
+// başlatıp/ara verip/tamamladığı, startup diline uygun günlük çalışma
+// akışı kaydı). Mevcut kullanıcı/rol/bildirim altyapısı yeniden kullanılır;
+// ayrı bir kullanıcı/izin sistemi kurulmaz (bkz. proje talebi).
+// ---------------------------------------------------------------------------
+
+/// NOT_STARTED ayrı bir durum değildir — o gün için hiç DailyFlowEntry
+/// satırı yoksa kullanıcı "henüz başlamadı" sayılır (bkz. src/lib/daily-flow.ts).
+enum DailyFlowStatus {
+  ACTIVE
+  ON_BREAK
+  COMPLETED
+}
+
+/// Bir kullanıcının bir güne ait tek akış kaydı. `status` alanı aynı zamanda
+/// basit bir durum makinesi görevi görür: yalnızca ACTIVE iken ara
+/// başlatılabilir, yalnızca ON_BREAK iken ara bitirilebilir — bu da "aynı
+/// anda iki açık ara" senaryosunu ayrı bir kısıt eklemeden doğal olarak
+/// engeller. `@@unique([userId, date])` aynı gün için iki aktif kayıt
+/// oluşmasını veritabanı seviyesinde engeller.
+model DailyFlowEntry {
+  id          String          @id @default(cuid())
+  userId      String
+  /// Akışın ait olduğu iş günü (sunucu saat dilimine göre) — saat bileşeni
+  /// taşımaz, `entryDate` desenindeki gibi salt tarih.
+  date        DateTime        @db.Date
+  status      DailyFlowStatus @default(ACTIVE)
+  startedAt   DateTime
+  completedAt DateTime?
+  /// Kullanıcının günü tamamlarken bıraktığı isteğe bağlı kısa not.
+  note        String?         @db.Text
+  /// Tamamlanınca hesaplanıp saklanır (raporlama/dışa aktarma hızlı kalsın
+  /// diye) — gün açıkken bu alanlar boştur, anlık değer her zaman
+  /// src/lib/daily-flow.ts üzerinden runtime'da hesaplanır.
+  totalActiveSeconds Int?
+  totalBreakSeconds  Int?
+  breakCount         Int?
+  /// Yanlışlıkla tamamlanmış bir günü yöneticinin yeniden açması burada
+  /// izlenir; ayrıntılı eski/yeni değer çifti DailyFlowEdit'te tutulur.
+  reopenedById String?
+  reopenedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reopenedBy User?     @relation("DailyFlowReopenedBy", fields: [reopenedById], references: [id], onDelete: SetNull)
+  breaks     DailyFlowBreak[]
+  edits      DailyFlowEdit[]
+
+  @@unique([userId, date])
+  @@index([date])
+  @@index([userId, date])
+  @@map("daily_flow_entries")
+}
+
+/// Bir akış kaydına ait tek bir ara. `endedAt` NULL ise ara hâlâ sürüyor
+/// demektir — entry.status ile birebir örtüşür (bkz. DailyFlowEntry).
+model DailyFlowBreak {
+  id         String    @id @default(cuid())
+  entryId    String
+  startedAt  DateTime
+  endedAt    DateTime?
+  /// Yönetici kullanıcı adına ara başlatmış/bitirmişse burada işaretlenir
+  /// (denetim amaçlı) — normal akışta NULL kalır.
+  actedById  String?
+  createdAt  DateTime  @default(now())
+
+  entry DailyFlowEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId])
+  @@map("daily_flow_breaks")
+}
+
+/// Yöneticinin bir DailyFlowEntry üzerinde yaptığı her düzeltme burada
+/// eski/yeni değer çifti olarak kalıcı tutulur — eski kayıt asla silinmez
+/// (bkz. proje kuralı: "Eski kayıt silinmemeli. Değişiklik geçmişi denetim
+/// kaydında tutulmalı.").
+model DailyFlowEdit {
+  id         String   @id @default(cuid())
+  entryId    String
+  editedById String
+  field      String
+  oldValue   String?
+  newValue   String?
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  entry    DailyFlowEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  editedBy User           @relation("DailyFlowEditedBy", fields: [editedById], references: [id], onDelete: Cascade)
+
+  @@index([entryId, createdAt])
+  @@map("daily_flow_edits")
+}
+
+/// Yöneticinin bir kullanıcı için tanımladığı ara hakları + isteğe bağlı
+/// standart çalışma saatleri (geç başlama/erken tamamlama etiketi için).
+/// Satır yoksa kullanıcı sınırsız kabul edilir. Her alan bağımsız NULL
+/// olabilir — "yalnızca adet sınırı", "yalnızca toplam süre sınırı" gibi
+/// kombinasyonları doğal olarak destekler (bkz. proje talebi §3).
+model DailyFlowUserSetting {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  /// Günlük toplam ara adedi sınırı — NULL: sınırsız adet.
+  maxBreakCount        Int?
+  /// Her bir aranın azami süresi (dakika) — NULL: tekil ara süresi sınırsız.
+  maxBreakMinutes      Int?
+  /// Günlük toplam ara süresi sınırı (dakika) — NULL: toplam süre sınırsız.
+  maxTotalBreakMinutes Int?
+  /// Standart başlangıç/bitiş saati, gün içi dakika olarak (09:00 → 540).
+  /// Yalnızca bilgilendirici etiket üretir, hiçbir kaydı engellemez.
+  standardStartMinute  Int?
+  standardEndMinute    Int?
+
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User  @relation("DailyFlowSettingUser", fields: [userId], references: [id], onDelete: Cascade)
+  updatedBy User? @relation("DailyFlowSettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("daily_flow_user_settings")
+}
+
+/// Kişiye özgü ayar (DailyFlowUserSetting) tanımlanmamış üyeler için
+/// geçerli olan takım genelindeki varsayılan ara hakkı/çalışma düzeni —
+/// tek bir çalışma alanı mimarisinde takım başına en fazla bir satır olur
+/// (bkz. görev #169 — "kişiye özgü tanımladığım gibi genele de yapmam
+/// gerekiyor" talebi). Alan anlamları DailyFlowUserSetting ile birebir
+/// aynıdır; çözümleme sırası src/lib/daily-flow.ts'te: kişiye özel ayar >
+/// takım varsayılanı > sınırsız.
+model DailyFlowTeamSetting {
+  id     String @id @default(cuid())
+  teamId String @unique
+
+  maxBreakCount        Int?
+  maxBreakMinutes      Int?
+  maxTotalBreakMinutes Int?
+  standardStartMinute  Int?
+  standardEndMinute    Int?
+
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team      Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  updatedBy User? @relation("DailyFlowTeamSettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("daily_flow_team_settings")
+}
+
+/// Yöneticinin Günlük Akış olaylarından hangileri için bildirim almak
+/// istediğini tuttuğu kişisel tercih satırı — satır yoksa alan bazlı
+/// varsayılanlar (bkz. default değerleri) geçerli olur.
+model DailyFlowNotificationPreference {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  onStart         Boolean @default(true)
+  onBreakStart    Boolean @default(false)
+  onBreakResume   Boolean @default(false)
+  onComplete      Boolean @default(true)
+  onBreakExceeded Boolean @default(true)
+  onDayLeftOpen   Boolean @default(true)
+  onRecordEdited  Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("daily_flow_notification_preferences")
+}
+
+// ---------------------------------------------------------------------------
+// Modül 8 — Ortak Alan (gerçek zamanlı ortak doküman çalışma alanı). Metnin
+// canlı CRDT durumu Yjs ile tutulur ve ayrı bir "collab" servisi (Hocuspocus)
+// tarafından yönetilir; bu servis periyodik olarak `Document.content`/
+// `contentText` alanlarını "materialize" eder (arama, önizleme, dışa aktarma,
+// sürüm geçmişi için). Mevcut kullanıcı/rol/ekip/proje/görev/etiket/bildirim
+// altyapısı yeniden kullanılır — ayrı bir kullanıcı/izin sistemi kurulmaz.
+// ---------------------------------------------------------------------------
+
+enum DocumentAccessLevel {
+  VIEWER
+  COMMENTER
+  EDITOR
+  OWNER
+}
+
+enum DocumentPermissionSubjectType {
+  USER
+  TEAM
+  ROLE
+  EVERYONE
+}
+
+/// Admin tarafından özelleştirilebilecek kapsam basit bir sabit set olarak
+/// tutulur (bkz. proje talebi §15) — sıralı bir iş akışı (taslak → onay →
+/// tamamlandı) ifade ettiği için dinamik bir referans tablosu yerine enum
+/// tercih edildi.
+enum DocumentStatus {
+  DRAFT
+  IN_PROGRESS
+  IN_REVIEW
+  BEING_REVISED
+  PENDING_APPROVAL
+  APPROVED
+  READY_TO_PUBLISH
+  COMPLETED
+  ARCHIVED
+}
+
+enum DocumentSuggestionType {
+  INSERT
+  DELETE
+  FORMAT
+  MOVE
+}
+
+enum DocumentSuggestionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REVISION_REQUESTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum DocumentAuditAction {
+  CREATED
+  EDITED
+  DELETED
+  RESTORED
+  PERMANENTLY_DELETED
+  PERMISSION_GRANTED
+  PERMISSION_REVOKED
+  SHARED
+  DOWNLOADED
+  EXPORTED
+  COMMENT_ADDED
+  COMMENT_DELETED
+  SUGGESTION_ACCEPTED
+  SUGGESTION_REJECTED
+  VERSION_RESTORED
+  OWNER_CHANGED
+  APPROVAL_REQUESTED
+  APPROVAL_GRANTED
+  REVISION_REQUESTED
+  APPROVAL_REJECTED
+  APPROVAL_WITHDRAWN
+}
+
+/// Admin tarafından yönetilen doküman türleri (bkz. proje talebi §3) —
+/// AnnouncementType/ImportantDateType ile birebir aynı desen.
+model DocumentType {
+  id       String  @id @default(cuid())
+  name     String
+  slug     String  @unique
+  isSystem Boolean @default(false)
+  createdAt DateTime @default(now())
+
+  documents Document[]
+
+  @@map("document_types")
+}
+
+/// Klasörler iç içe olabilir (self-relation). Bir klasöre verilen yetki,
+/// aksi ayrıca dokümanda belirtilmedikçe içindeki tüm dokümanlara miras
+/// kalır (bkz. proje talebi §13) — bu, izin çözümlemesi sırasında önce
+/// doküman seviyesi, yoksa klasör seviyesi (kök klasöre kadar) kontrol
+/// edilerek uygulanır.
+model DocumentFolder {
+  id             String    @id @default(cuid())
+  name           String
+  parentFolderId String?
+  teamId         String?
+  createdById    String
+  archivedAt     DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  parentFolder DocumentFolder?  @relation("FolderTree", fields: [parentFolderId], references: [id], onDelete: Cascade)
+  childFolders DocumentFolder[] @relation("FolderTree")
+  team         Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  createdBy    User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  documents   Document[]
+  permissions DocumentPermission[]
+
+  @@index([parentFolderId])
+  @@index([teamId])
+  @@map("document_folders")
+}
+
+/// Ortak Alan'daki tek bir doküman. `content`/`contentText`, canlı Yjs
+/// durumunun collab servisi tarafından periyodik olarak "materialize"
+/// edilmiş hâlidir — liste önizlemesi, arama indeksi, dışa aktarma ve
+/// kelime/karakter sayaçları buradan beslenir; asıl eş zamanlı düzenleme
+/// DocumentYjsState üzerinden yürür.
+model Document {
+  id          String         @id @default(cuid())
+  title       String
+  description String?        @db.Text
+  typeId      String?
+  folderId    String?
+  teamId      String?
+  projectId   String?
+  status      DocumentStatus @default(DRAFT)
+
+  ownerId        String
+  createdById    String
+  lastEditedById String?
+
+  content     Json?
+  contentText String? @db.Text
+  wordCount   Int     @default(0)
+  charCount   Int     @default(0)
+
+  /// Bu satır bir şablonsa true — "Şablondan Oluştur" akışı bu dokümanın
+  /// içeriğini bağımsız yeni bir Document olarak kopyalar (bkz. §14).
+  isTemplate       Boolean @default(false)
+  templateCategory String?
+  isSystemTemplate Boolean @default(false)
+
+  isPinned   Boolean   @default(false)
+  pinnedById String?
+  pinnedAt   DateTime?
+
+  /// Admin onaylı, süreli/şifreli dış bağlantı paylaşımı (bkz. §22) —
+  /// varsayılan olarak kapalıdır (publicShareToken NULL).
+  publicShareToken        String?   @unique
+  publicShareExpiresAt    DateTime?
+  publicSharePasswordHash String?
+
+  archivedAt DateTime?
+  deletedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  type          DocumentType?    @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  folder        DocumentFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  team          Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  project       Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  owner         User             @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdBy     User             @relation("DocumentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  lastEditedBy  User?            @relation("DocumentLastEditor", fields: [lastEditedById], references: [id], onDelete: SetNull)
+  pinnedBy      User?            @relation("DocumentPinnedBy", fields: [pinnedById], references: [id], onDelete: SetNull)
+
+  versions          DocumentVersion[]
+  comments          DocumentComment[]
+  suggestions       DocumentSuggestion[]
+  permissions       DocumentPermission[]
+  tags              DocumentTag[]
+  favorites         DocumentFavorite[]
+  followers         DocumentFollower[]
+  approvalRequests  ApprovalRequest[]
+  auditLogs         DocumentAuditLog[]
+  linkedTasks       Task[]
+  yjsState          DocumentYjsState?
+  spreadsheetOps    SpreadsheetOp[]
+
+  @@index([folderId])
+  @@index([teamId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([deletedAt])
+  @@index([isTemplate])
+  @@map("documents")
+}
+
+/// Kullanıcı talebi #16: "Excel formatında ortak çalışılmıyor" — Word
+/// Yjs/Hocuspocus ile CRDT tabanlı gerçek zamanlı işbirliği kullanıyor
+/// (bkz. DocumentYjsState, collab-server/), ama fortune-sheet (Excel
+/// editörü) Yjs entegrasyonuna sahip değil; bunun yerine kendi `onOp`
+/// (yerel düzenlemeden üretilen atomik işlem listesi) ve `applyOp`
+/// (uzaktan gelen işlemleri UYGULAMA — onOp'u YENİDEN TETİKLEMEZ, bkz.
+/// paket kaynağı: applyOp ham setContext kullanır, emitOp'u atlar) API'sini
+/// sağlıyor. Bu tablo KISA ÖMÜRLÜ bir yayın (broadcast) rölesidir — kalıcı
+/// geçmiş DEĞİLDİR; gerçek kaynak hâlâ Document.content'teki periyodik tam
+/// anlık görüntüdür (bkz. spreadsheet-editor.tsx debounce'lu PATCH). Her
+/// POST sırasında birkaç dakikadan eski satırlar silinir (bkz.
+/// spreadsheet-ops/route.ts) — bu yüzden ayrı bir sıra/seq alanına gerek
+/// yok, `id` + `createdAt` sıralaması ve "kendi kullanıcımı hariç tut"
+/// filtresi tek başına yeterli.
+model SpreadsheetOp {
+  id         Int      @id @default(autoincrement())
+  documentId String
+  userId     String
+  ops        Json
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+  @@map("spreadsheet_ops")
+}
+
+/// Klasördeki gibi dokümanda da tek bir yetki satırı ya belirli bir
+/// kullanıcıyı, bir ekibi, bir rolü (tüm ADMIN'ler/tüm MEMBER'lar) ya da
+/// tüm sistemdeki kullanıcıları (EVERYONE) hedefler — `subjectType` hangi
+/// alanın dolu olacağını belirler.
+model DocumentPermission {
+  id           String                         @id @default(cuid())
+  documentId   String?
+  folderId     String?
+  subjectType  DocumentPermissionSubjectType
+  subjectUserId String?
+  subjectTeamId String?
+  subjectRole   TeamRole?
+  level         DocumentAccessLevel
+  grantedById   String
+  createdAt     DateTime                       @default(now())
+
+  document    Document?       @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  folder      DocumentFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  subjectUser User?           @relation("DocumentPermissionSubjectUser", fields: [subjectUserId], references: [id], onDelete: Cascade)
+  subjectTeam Team?           @relation(fields: [subjectTeamId], references: [id], onDelete: Cascade)
+  grantedBy   User            @relation("DocumentPermissionGrantedBy", fields: [grantedById], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([folderId])
+  @@index([subjectUserId])
+  @@map("document_permissions")
+}
+
+model DocumentTag {
+  documentId String
+  tagId      String
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, tagId])
+  @@map("document_tags")
+}
+
+model DocumentFavorite {
+  documentId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, userId])
+  @@map("document_favorites")
+}
+
+/// "Takip Et" — takip edilen dokümanda önemli bir değişiklik olduğunda
+/// kullanıcıya bildirim gönderilir (bkz. §18).
+model DocumentFollower {
+  documentId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, userId])
+  @@map("document_followers")
+}
+
+/// Metnin belirli bir bölümüne bağlı yorum. `anchorFrom`/`anchorTo` editör
+/// içindeki karakter konumlarıdır; `anchorText` o andaki seçili metnin
+/// anlık görüntüsüdür — doküman sonradan değişse bile yorumun neyle ilgili
+/// olduğu okunabilir kalsın diye saklanır.
+model DocumentComment {
+  id              String    @id @default(cuid())
+  documentId      String
+  parentCommentId String?
+  authorId        String
+  body            String    @db.Text
+  anchorFrom      Int?
+  anchorTo        Int?
+  anchorText      String?
+  resolved        Boolean   @default(false)
+  resolvedById    String?
+  resolvedAt      DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  document      Document          @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  parentComment DocumentComment?  @relation("DocumentCommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies       DocumentComment[] @relation("DocumentCommentReplies")
+  author        User              @relation("DocumentCommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  resolvedBy    User?             @relation("DocumentCommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  linkedTasks   Task[]
+
+  @@index([documentId, resolved])
+  @@index([parentCommentId])
+  @@map("document_comments")
+}
+
+/// Öneri modu (track-changes) — gerçek işaretleme editördeki özel Tiptap
+/// mark'ları (suggestionInsert/suggestionDelete, bkz. collab-server ve
+/// editör uzantıları) üzerinden yürür; bu tablo yalnızca metadata/durumu
+/// tutar ve yönetici/sahip için kabul/red arayüzünü besler.
+model DocumentSuggestion {
+  id            String                   @id @default(cuid())
+  documentId    String
+  authorId      String
+  type          DocumentSuggestionType
+  status        DocumentSuggestionStatus @default(PENDING)
+  anchorFrom    Int?
+  anchorTo      Int?
+  originalText  String?                  @db.Text
+  suggestedText String?                  @db.Text
+  note          String?                  @db.Text
+  decidedById   String?
+  decidedAt     DateTime?
+  createdAt     DateTime                 @default(now())
+
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author     User     @relation("DocumentSuggestionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  decidedBy  User?    @relation("DocumentSuggestionDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([documentId, status])
+  @@map("document_suggestions")
+}
+
+/// Otomatik (periyodik) veya manuel (kullanıcı adlandırarak) oluşturulan
+/// sürüm anlık görüntüsü. Eski sürüme dönüldüğünde mevcut içerik SİLİNMEZ —
+/// dönüş de yeni bir sürüm olarak kaydedilir (bkz. §11).
+model DocumentVersion {
+  id             String   @id @default(cuid())
+  documentId     String
+  content        Json
+  contentText    String?  @db.Text
+  label          String?
+  isAutoSnapshot Boolean  @default(true)
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+  @@map("document_versions")
+}
+
+/// Onay akışı (bkz. §16) — bir doküman için birden fazla onay turu
+/// olabilir, geçmiş bu satırların tamamı sorgulanarak görülür.
+model ApprovalRequest {
+  id                String         @id @default(cuid())
+  documentId        String
+  requestedById     String
+  currentApproverId String?
+  status            ApprovalStatus @default(PENDING)
+  decisionNote      String?        @db.Text
+  decidedById       String?
+  decidedAt         DateTime?
+  createdAt         DateTime       @default(now())
+
+  document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  requestedBy     User     @relation("ApprovalRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  currentApprover User?    @relation("ApprovalCurrentApprover", fields: [currentApproverId], references: [id], onDelete: SetNull)
+  decidedBy       User?    @relation("ApprovalDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([documentId, status])
+  @@map("approval_requests")
+}
+
+/// Ortak Alan'a özel, yalnızca admin'in görebildiği ayrıntılı denetim
+/// kaydı (bkz. §25) — genel ekip aktivite akışından (ActivityLog) bilinçli
+/// olarak ayrı tutulur, çünkü ActivityLog tüm üyelere açıktır. Doküman
+/// kalıcı silinse bile bu kayıt `documentTitleSnapshot` ile okunabilir kalır.
+model DocumentAuditLog {
+  id                    String              @id @default(cuid())
+  documentId            String?
+  documentTitleSnapshot String
+  actorId               String
+  action                DocumentAuditAction
+  field                 String?
+  oldValue              String?             @db.Text
+  newValue              String?             @db.Text
+  description           String?
+  ipAddress             String?
+  createdAt             DateTime            @default(now())
+
+  document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  actor    User      @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([documentId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("document_audit_logs")
+}
+
+/// Bir dokümanın canlı Yjs CRDT durumu (ikili/binary). Yalnızca collab
+/// servisi tarafından okunup yazılır — ilişkisel API katmanı bu tabloya
+/// hiç dokunmaz, yalnızca `Document.content`/`contentText`'i (materialize
+/// edilmiş kopya) kullanır.
+model DocumentYjsState {
+  documentId String   @id
+  state      Bytes
+  updatedAt  DateTime @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@map("document_yjs_states")
+}
+
+/// Bir kullanıcının Ortak Alan olaylarından hangileri için bildirim almak
+/// istediğini tuttuğu kişisel tercih satırı (§ bildirim türleri +
+/// tercihleri). Satır yoksa alan bazlı varsayılanlar (hepsi açık) geçerli
+/// olur — bkz. src/lib/document-notifications.ts. Daily Flow modülündeki
+/// DailyFlowNotificationPreference ile AYNI desen kasıtlı olarak
+/// tekrarlanmıştır (bkz. proje kararı: modüller arası tutarlılık).
+model DocumentNotificationPreference {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  onShared       Boolean @default(true)
+  onMentioned    Boolean @default(true)
+  onComment      Boolean @default(true)
+  onApproval     Boolean @default(true)
+  onStatusChange Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("document_notification_preferences")
+}
+
+// ---------------------------------------------------------------------------
+// Modül 9 — Finans Takip. Profesyonel bir muhasebe yazılımı DEĞİL; günlük
+// gelir/gider takibi için sade bir ekran. Mevcut kullanıcı/rol/ekip/etiket/
+// bildirim/aktivite-akışı altyapısı yeniden kullanılır — ayrı bir kullanıcı
+// veya rol sistemi kurulmaz. Tek istisna: "İlgili departman görebilir"
+// görünürlük seçeneği anlamlı olsun diye eklenen minimal `Department`
+// grup etiketi — bu bir rol/yetki sistemi DEĞİL, yalnızca kullanıcıları
+// gruplamaya yarayan basit bir referans tablosudur (University/Institute
+// ile aynı desen).
+// ---------------------------------------------------------------------------
+
+enum FinanceRecordType {
+  INCOME
+  EXPENSE
+}
+
+enum FinancePaymentMethod {
+  CASH
+  CREDIT_CARD
+  BANK_TRANSFER
+  AUTOMATIC_PAYMENT
+  OTHER
+}
+
+enum FinanceRecordStatus {
+  PAID
+  PENDING
+  PARTIALLY_PAID
+  CANCELLED
+}
+
+enum FinanceRecurrenceFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  SEMIANNUAL
+  YEARLY
+  CUSTOM
+}
+
+/// Bir finans kaydını kimlerin görebileceği (bkz. proje talebi §5).
+/// ADMIN_ONLY: yalnızca adminler. OWNER_AND_ADMIN: kaydı oluşturan + adminler
+/// (varsayılan). SPECIFIC_USERS: FinanceRecordVisibleUser'da seçilen kişiler
+/// + adminler. DEPARTMENT: kaydın departmentId'siyle aynı departmandaki
+/// kullanıcılar + adminler. TEAM: tüm ekip.
+enum FinanceVisibility {
+  ADMIN_ONLY
+  OWNER_AND_ADMIN
+  SPECIFIC_USERS
+  DEPARTMENT
+  TEAM
+}
+
+enum FinanceRateSource {
+  MANUAL
+  AUTO
+}
+
+/// AtlasChangeLog ile birebir aynı desen: bir FinanceTransaction üzerinde
+/// değişen her alan için ayrı bir satır (bkz. proje talebi §10 — "Kim,
+/// hangi kaydı, ne zaman değiştirdi bilgisi loglansın").
+enum FinanceChangeAction {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  DELETED
+  RESTORED
+}
+
+/// Yalnızca "İlgili departman görebilir" görünürlük seçeneği anlamlı olsun
+/// diye var olan minimal kullanıcı gruplama etiketi — ayrı bir rol/yetki
+/// sistemi değildir, TeamRole (ADMIN/MEMBER) hâlâ tek yetki kaynağıdır.
+model Department {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members             User[]
+  financeTransactions FinanceTransaction[]
+  financeRecurringTemplates FinanceRecurringTemplate[]
+
+  @@map("departments")
+}
+
+/// Admin tarafından yönetilen para birimleri — "gerekirse sonradan yeni
+/// para birimi eklenebilecek yapı" (bkz. proje talebi §2) için sabit bir
+/// enum yerine referans tablo tercih edildi. TRY, USD, EUR ve gram altın
+/// (XAU_GRAM) başlangıç verisiyle gelir; `isBase` yalnızca TRY'de true'dur.
+model FinanceCurrency {
+  id             String   @id @default(cuid())
+  code           String   @unique
+  name           String
+  symbol         String
+  decimalPlaces  Int      @default(2)
+  isBase         Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  rates               FinanceExchangeRate[]
+  transactions        FinanceTransaction[]
+  recurringTemplates  FinanceRecurringTemplate[]
+
+  @@map("finance_currencies")
+}
+
+/// Ekleme-yalnız (insert-only) kur geçmişi — bir para biriminin "güncel
+/// kuru" bu tablodaki en yeni satırdır. Bir FinanceTransaction OLUŞTURULDUĞU
+/// anda kullanılan kur `FinanceTransaction.rateToTry` alanına AYRICA
+/// kopyalanır ve asla değişmez (bkz. proje talebi §8 — "Geçmiş bir finans
+/// kaydının TL karşılığı, güncel kura göre sürekli değişmemeli").
+model FinanceExchangeRate {
+  id         String            @id @default(cuid())
+  currencyId String
+  /// 1 birim bu para biriminin kaç TL ettiği.
+  rateToTry  Decimal           @db.Decimal(14, 4)
+  source     FinanceRateSource @default(MANUAL)
+  setById    String
+  createdAt  DateTime          @default(now())
+
+  currency FinanceCurrency @relation(fields: [currencyId], references: [id], onDelete: Cascade)
+  setBy    User            @relation(fields: [setById], references: [id], onDelete: Cascade)
+
+  @@index([currencyId, createdAt])
+  @@map("finance_exchange_rates")
+}
+
+/// Gider/gelir kategorileri, opsiyonel alt kategori için self-ilişkili
+/// (DocumentFolder'daki "FolderTree" deseniyle birebir aynı). Admin
+/// ekleyebilir/düzenleyebilir/pasife alabilir/silebilir (bkz. proje talebi
+/// §3). `type` bir kategorinin yalnızca gelir YA DA gider tarafında
+/// kullanılabileceğini garanti eder.
+model FinanceCategory {
+  id               String            @id @default(cuid())
+  name             String
+  slug             String            @unique
+  type             FinanceRecordType
+  parentCategoryId String?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  parentCategory FinanceCategory?  @relation("FinanceCategoryTree", fields: [parentCategoryId], references: [id], onDelete: Cascade)
+  subCategories  FinanceCategory[] @relation("FinanceCategoryTree")
+  transactions   FinanceTransaction[]
+  recurringTemplates FinanceRecurringTemplate[]
+
+  @@index([type, isActive])
+  @@index([parentCategoryId])
+  @@map("finance_categories")
+}
+
+/// Bir kullanıcının finans modülündeki ince taneli yetkileri (bkz. proje
+/// talebi §5). Satır yoksa MEMBER için makul varsayılanlar geçerli olur
+/// (bkz. src/lib/finance-permissions.ts); ADMIN rolü her zaman tüm
+/// yetkilere sahiptir ve bu tablodan bağımsızdır — bu, "ikinci bir rol
+/// sistemi kurma" kısıtına uyar: TeamRole hâlâ tek otorite kaynağıdır, bu
+/// tablo yalnızca MEMBER'lara istisnai ek yetki tanımlamak için vardır.
+model FinancePermission {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  canViewFinance      Boolean @default(true)
+  canViewOwnRecords   Boolean @default(true)
+  canViewAllRecords   Boolean @default(false)
+  canCreateRecords    Boolean @default(true)
+  canEditOwnRecords   Boolean @default(true)
+  canEditAllRecords   Boolean @default(false)
+  canDeleteRecords    Boolean @default(false)
+  canViewReports      Boolean @default(true)
+  canViewAttachments  Boolean @default(true)
+  canManageCategories Boolean @default(false)
+  canManageRates      Boolean @default(false)
+
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  user      User  @relation("FinancePermissionUser", fields: [userId], references: [id], onDelete: Cascade)
+  updatedBy User? @relation("FinancePermissionUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("finance_permissions")
+}
+
+/// Kira/maaş/sunucu/yazılım/internet gibi düzenli giderler için tekrarlama
+/// şablonu — RecurringTaskTemplate ile birebir aynı desen: sayfa her
+/// açıldığında (veya bildirim taraması sırasında) `nextOccurrenceDate`i
+/// geçmiş aktif şablonlar taranır, eksikse yeni bir FinanceTransaction
+/// türetilir (bkz. src/lib/finance-recurring.ts).
+model FinanceRecurringTemplate {
+  id             String                      @id @default(cuid())
+  type           FinanceRecordType
+  amount         Decimal                     @db.Decimal(14, 2)
+  currencyId     String
+  categoryId     String
+  description    String?
+  personId       String
+  payeeName      String?
+  paymentMethod  FinancePaymentMethod?
+  bankAccount    String?
+  visibility     FinanceVisibility           @default(OWNER_AND_ADMIN)
+  departmentId   String?
+  frequency      FinanceRecurrenceFrequency
+  /// Yalnızca frequency = CUSTOM iken kullanılır (gün cinsinden periyot).
+  customIntervalDays Int?
+  startDate      DateTime                    @db.Date
+  endDate        DateTime?                   @db.Date
+  nextOccurrenceDate DateTime                @db.Date
+  lastGeneratedAt    DateTime?
+  active         Boolean                     @default(true)
+  createdById    String
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  currency    FinanceCurrency @relation(fields: [currencyId], references: [id], onDelete: Restrict)
+  category    FinanceCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  person      User            @relation("FinanceRecurringPerson", fields: [personId], references: [id], onDelete: Cascade)
+  department  Department?     @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdBy   User            @relation("FinanceRecurringCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  generatedTransactions FinanceTransaction[]
+
+  @@index([active, nextOccurrenceDate])
+  @@map("finance_recurring_templates")
+}
+
+/// Sistemin tek gelir/gider kaydı. `amount`/`currencyId` orijinal tutar ve
+/// para birimidir; `rateToTry`/`amountTry` işlem OLUŞTURULDUĞU anda
+/// hesaplanıp saklanır (bkz. proje talebi §8). Farklı para birimleri asla
+/// doğrudan toplanmaz — tüm toplamlar `amountTry` üzerinden ya da para
+/// birimi bazında ayrı ayrı hesaplanır (bkz. src/lib/finance.ts).
+model FinanceTransaction {
+  id              String               @id @default(cuid())
+  type            FinanceRecordType
+  transactionDate DateTime             @db.Date
+  amount          Decimal              @db.Decimal(14, 2)
+  currencyId      String
+  /// İşlem anında kullanılan kur (TRY için her zaman 1). Sonradan kur
+  /// güncellense bile bu alan DEĞİŞMEZ.
+  rateToTry       Decimal              @db.Decimal(14, 4)
+  /// amount * rateToTry — saklanır (raporlama hızlı kalsın diye).
+  amountTry       Decimal              @db.Decimal(14, 2)
+  categoryId      String
+  description     String?              @db.Text
+  /// Harcamayı yapan / geliri ilgilendiren kullanıcı (bkz. proje talebi §4
+  /// — kişi bazlı harcama takibi).
+  personId        String
+  /// Ödemeyi alan kişi veya firma — sistemde kayıtlı bir kullanıcı olmak
+  /// zorunda değildir, serbest metindir.
+  payeeName       String?
+  paymentMethod   FinancePaymentMethod?
+  bankAccount     String?
+  receiptNumber   String?
+  status          FinanceRecordStatus  @default(PAID)
+  visibility      FinanceVisibility    @default(OWNER_AND_ADMIN)
+  departmentId    String?
+  isRecurring     Boolean              @default(false)
+  recurringTemplateId String?
+  note            String?              @db.Text
+
+  createdById    String
+  lastEditedById String?
+
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  currency          FinanceCurrency           @relation(fields: [currencyId], references: [id], onDelete: Restrict)
+  category          FinanceCategory           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  person            User                      @relation("FinancePerson", fields: [personId], references: [id], onDelete: Cascade)
+  department        Department?               @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  recurringTemplate FinanceRecurringTemplate? @relation(fields: [recurringTemplateId], references: [id], onDelete: SetNull)
+  createdBy         User                      @relation("FinanceRecordCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  lastEditedBy      User?                     @relation("FinanceRecordEditor", fields: [lastEditedById], references: [id], onDelete: SetNull)
+
+  visibleUsers FinanceRecordVisibleUser[]
+  attachments  FinanceAttachment[]
+  tags         FinanceTransactionTag[]
+  changeLogs   FinanceChangeLog[]
+
+  @@index([type, transactionDate])
+  @@index([personId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([visibility])
+  @@index([deletedAt])
+  @@map("finance_transactions")
+}
+
+/// `visibility = SPECIFIC_USERS` iken kaydı hangi kullanıcıların
+/// görebileceğini tutar — AnnouncementMention/FileMention ile aynı desen.
+model FinanceRecordVisibleUser {
+  financeTransactionId String
+  userId                String
+
+  transaction FinanceTransaction @relation(fields: [financeTransactionId], references: [id], onDelete: Cascade)
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([financeTransactionId, userId])
+  @@map("finance_record_visible_users")
+}
+
+/// Fiş/fatura belgesi — TaskAttachment ile aynı desen (yalnızca UPLOAD,
+/// dış bağlantı desteklenmez).
+model FinanceAttachment {
+  id                   String   @id @default(cuid())
+  financeTransactionId String
+  fileName             String
+  storedPath           String
+  fileSize             Int
+  mimeType             String
+  uploadedById         String
+  createdAt            DateTime @default(now())
+
+  transaction FinanceTransaction @relation(fields: [financeTransactionId], references: [id], onDelete: Cascade)
+  uploadedBy  User                @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@map("finance_attachments")
+}
+
+/// Var olan genel Tag modeline bağlanan finans etiketleri — TaskTag ile
+/// birebir aynı desen, ayrı bir etiket sistemi kurulmaz.
+model FinanceTransactionTag {
+  financeTransactionId String
+  tagId                 String
+
+  transaction FinanceTransaction @relation(fields: [financeTransactionId], references: [id], onDelete: Cascade)
+  tag         Tag                 @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([financeTransactionId, tagId])
+  @@map("finance_transaction_tags")
+}
+
+/// AtlasChangeLog ile birebir aynı desen — bir FinanceTransaction üzerinde
+/// değişen her alan ayrı bir satır olarak kalıcı tutulur (bkz. proje talebi
+/// §10 — kayıt detay sayfasındaki "Değişiklik geçmişi").
+model FinanceChangeLog {
+  id          String              @id @default(cuid())
+  transactionId String
+  action      FinanceChangeAction
+  field       String?
+  oldValue    String?
+  newValue    String?
+  changedById String
+  changedAt   DateTime            @default(now())
+
+  transaction FinanceTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  changedBy   User                @relation(fields: [changedById], references: [id], onDelete: Cascade)
+
+  @@index([transactionId, changedAt])
+  @@map("finance_change_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Modül 10 — Sosyal Medya, İçerik ve SEO Yönetimi. Mevcut kullanıcı/rol/ekip/
+// bildirim/aktivite-akışı/dosya altyapısı yeniden kullanılır — ayrı bir
+// kullanıcı, rol veya dosya sistemi kurulmaz. İnce taneli yetkiler Finans
+// modülündeki ile BİREBİR AYNI desende (`ContentPermission` — TeamRole hâlâ
+// tek yetki otoritesi, bu tablo yalnızca MEMBER için istisnai override
+// tanımlar). Yorum/etiketleme/revizyon/dosya-bağlama gibi modül içi ORTAK
+// alanlar için, Tag modelindeki "polimorfik tek tablo yerine tip güvenliği"
+// kararına uygun ama ActivityLog'daki "bir kayıtta birden fazla nullable FK"
+// desenini izleyen paylaşımlı tablolar kullanılır (ContentComment,
+// ContentMention, ContentRevision, ContentAsset) — böylece 4 içerik türü
+// (SocialContent/BlogContent/SeoWork/WebsiteWork) için ayrı ayrı 4'er tablo
+// açılmaz. "Marka veya proje" filtre boyutu, Department ile aynı basit
+// referans-tablo deseninde `ContentBrand` ile karşılanır (Department ayrı
+// bir HR/departman kavramı olduğu için karıştırılmaz). Önceliğe yeni bir enum
+// açılmaz, mevcut `TaskPriority` yeniden kullanılır.
+// ---------------------------------------------------------------------------
+
+enum SocialPlatform {
+  INSTAGRAM
+  LINKEDIN
+  TWITTER
+  TIKTOK
+  FACEBOOK
+}
+
+/// 13 durumlu içerik iş akışı — SocialContent/BlogContent/SeoWork/
+/// WebsiteWork'ün tümü aynı enum'u paylaşır (uygulama katmanı, içerik
+/// türüne göre hangi geçişlerin anlamlı olduğunu Zod ile kısıtlar).
+enum ContentStatus {
+  IDEA
+  DRAFT
+  IN_PROGRESS
+  AWAITING_DESIGN
+  AWAITING_VIDEO
+  AWAITING_REVIEW
+  AWAITING_APPROVAL
+  REVISION_REQUESTED
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  CANCELLED
+  ARCHIVED
+}
+
+/// Günlük Çalışma Raporu kalemlerinin kategorisi.
+enum WorkCategory {
+  SOCIAL_POST
+  CONTENT_CREATION
+  GRAPHIC_DESIGN
+  VIDEO_EDITING
+  REELS
+  STORY
+  BLOG_POST
+  SEO_WORK
+  GEO_WORK
+  KEYWORD_RESEARCH
+  COMPETITOR_ANALYSIS
+  WEBSITE_CONTENT_UPDATE
+  LANDING_PAGE_EDIT
+  UNIVERSITY_PROGRAM_DATA_ENTRY
+  ANNOUNCEMENT_ENTRY
+  PAGE_CHECK
+  BUG_CHECK
+  MODERATION
+  COMMENT_MANAGEMENT
+  REPORTING
+  OTHER
+}
+
+enum SeoWorkType {
+  KEYWORD_RESEARCH
+  CONTENT_OPTIMIZATION
+  TECHNICAL_SEO_CHECK
+  META_TITLE_EDIT
+  META_DESCRIPTION_EDIT
+  INTERNAL_LINKING
+  IMAGE_SEO
+  URL_EDIT
+  SCHEMA_WORK
+  COMPETITOR_ANALYSIS
+  SEARCH_CONSOLE_CHECK
+  SITEMAP_CHECK
+  BROKEN_LINK_CHECK
+  PAGE_SPEED_CHECK
+  CONTENT_UPDATE
+  GEO_OPTIMIZATION
+  AI_SEARCH_VISIBILITY
+}
+
+enum WebsiteWorkType {
+  TEXT_UPDATE
+  IMAGE_CHANGE
+  NEW_PAGE
+  PAGE_REMOVAL
+  MENU_EDIT
+  UNIVERSITY_INFO_UPDATE
+  PROGRAM_INFO_UPDATE
+  ANNOUNCEMENT_ADD
+  EVENT_ADD
+  BLOG_ADD
+  SEO_EDIT
+  BUG_FIX
+  FORM_UPDATE
+  UX_IMPROVEMENT
+  DATA_ENTRY
+  DATA_CHECK
+  OTHER
+}
+
+enum DailyWorkReportStatus {
+  SUBMITTED
+  APPROVED
+  REVISION_REQUESTED
+}
+
+enum ContentRevisionStatus {
+  OPEN
+  RESOLVED
+}
+
+enum ContentAssetRole {
+  COVER
+  GALLERY
+  VIDEO
+  SCREENSHOT
+  DOCUMENT
+  SUBTITLE
+  OTHER
+}
+
+enum AiActionType {
+  BLOG_TOPIC_SUGGESTION
+  BLOG_DRAFT
+  TITLE_ALTERNATIVES
+  META_TITLE
+  META_DESCRIPTION
+  KEYWORD_SUGGESTIONS
+  CONTENT_OUTLINE
+  HEADING_STRUCTURE
+  SOCIAL_POST_TEXT
+  PLATFORM_REWRITE
+  INSTAGRAM_HASHTAGS
+  LINKEDIN_TEXT
+  TWITTER_TEXT
+  THREAD_GENERATION
+  TIKTOK_DESCRIPTION
+  FACEBOOK_TEXT
+  CTA_SUGGESTION
+  SHORTEN
+  LENGTHEN
+  PROOFREAD
+  TONE_CHANGE
+  SEO_ANALYSIS
+  GEO_SUGGESTIONS
+  DUPLICATE_DETECTION
+  QUALITY_SCORE
+}
+
+enum AiOutputDecision {
+  PENDING
+  ACCEPTED
+  EDITED
+  REJECTED
+}
+
+/// "Marka veya proje" filtre boyutu — Department ile birebir aynı, basit
+/// bir referans-tablo (admin tarafından yönetilir, isActive ile pasife
+/// alınabilir). Ayrı bir rol/yetki sistemi DEĞİLDİR.
+model ContentBrand {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  socialContents SocialContent[]
+  blogContents   BlogContent[]
+  seoWorks       SeoWork[]
+  websiteWorks   WebsiteWork[]
+  dailyWorkItems DailyWorkItem[]
+
+  @@map("content_brands")
+}
+
+/// İnce taneli yetki override — FinancePermission ile BİREBİR AYNI desen.
+/// İKİNCİ bir rol sistemi DEĞİLDİR: ADMIN her zaman tüm yetkilere sahiptir
+/// ve bu tablodan bağımsızdır. Satır yoksa uygulama katmanındaki
+/// MEMBER_DEFAULTS geçerli olur (bkz. lib/content-permissions.ts).
+model ContentPermission {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  canViewModule         Boolean @default(true)
+  canViewAllContent     Boolean @default(false)
+  canViewOwnContent     Boolean @default(true)
+  canViewTeamContent    Boolean @default(false)
+  canCreateContent      Boolean @default(true)
+  canEditOwnContent     Boolean @default(true)
+  canEditAllContent     Boolean @default(false)
+  canDeleteOwnContent   Boolean @default(false)
+  canDeleteAllContent   Boolean @default(false)
+  canApproveContent     Boolean @default(false)
+  canRequestRevision    Boolean @default(false)
+  canScheduleContent    Boolean @default(false)
+  canMarkPublished      Boolean @default(false)
+  canManageBlog         Boolean @default(true)
+  canManageSeo          Boolean @default(true)
+  canManageWebsiteWork  Boolean @default(true)
+  canCreateDailyReport  Boolean @default(true)
+  canApproveDailyReport Boolean @default(false)
+  canUploadFiles        Boolean @default(true)
+  canDeleteFiles        Boolean @default(false)
+  canComment            Boolean @default(true)
+  canMentionUsers       Boolean @default(true)
+  canViewReports        Boolean @default(true)
+  canManageSettings     Boolean @default(false)
+  canUseAi              Boolean @default(true)
+  canViewAiCosts        Boolean @default(false)
+  canViewActivityLog    Boolean @default(false)
+
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  user      User  @relation("ContentPermissionUser", fields: [userId], references: [id], onDelete: Cascade)
+  updatedBy User? @relation("ContentPermissionUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("content_permissions")
+}
+
+/// Sosyal medya paylaşımı. `contentType` bilinçli olarak sabit bir enum
+/// DEĞİL, serbest String'dir — platforma göre içerik türü listesi farklı ve
+/// esnek olmalı (bkz. proje talebi §5: "yeni platformlar eklenebilecek
+/// şekilde esnek"); geçerli değerler platforma göre Zod ile doğrulanır.
+model SocialContent {
+  id      String         @id @default(cuid())
+  teamId  String
+  brandId String?
+
+  platform    SocialPlatform
+  contentType String
+  status      ContentStatus @default(IDEA)
+  priority    TaskPriority  @default(MEDIUM)
+
+  title            String
+  postText         String?  @db.Text
+  shortDescription String?
+  longDescription  String?  @db.Text
+  hashtags         String[]
+  mentionAccounts  String[]
+  location         String?
+  linkUrl          String?
+  ctaText          String?
+  targetAudience   String?
+  contentGoal      String?
+  campaign         String?
+  keywords         String[]
+  altText          String?
+
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  publishUrl  String?
+
+  createdById   String
+  designerId    String?
+  videoEditorId String?
+  approvedById  String?
+  publishedById String?
+
+  internalNotes String? @db.Text
+
+  /// Soft delete — Finans/Ortak Alan ile aynı desen (`deletedAt` dolu =
+  /// silinmiş, kalıcı silme ayrı ve yalnızca en üst yetkiye açık bir işlem).
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team        Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  brand       ContentBrand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdBy   User          @relation("SocialContentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  designer    User?         @relation("SocialContentDesigner", fields: [designerId], references: [id], onDelete: SetNull)
+  videoEditor User?         @relation("SocialContentVideoEditor", fields: [videoEditorId], references: [id], onDelete: SetNull)
+  approvedBy  User?         @relation("SocialContentApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  publishedBy User?         @relation("SocialContentPublisher", fields: [publishedById], references: [id], onDelete: SetNull)
+
+  comments    ContentComment[]
+  mentions    ContentMention[]
+  revisions   ContentRevision[]
+  assets      ContentAsset[]
+  aiGenerations AiGeneration[]
+  performance SocialContentPerformance?
+
+  @@index([teamId, status])
+  @@index([platform, scheduledAt])
+  @@index([brandId])
+  @@index([deletedAt])
+  @@map("social_contents")
+}
+
+/// Sonradan girilen manuel performans metrikleri (bkz. proje talebi §16).
+/// İleride sosyal medya API'lerine bağlanabilecek şekilde 1-1 ve
+/// güncellenebilir tutuldu; zaman serisi gerekirse ayrı bir tabloya
+/// genişletilebilir.
+model SocialContentPerformance {
+  id              String @id @default(cuid())
+  socialContentId String @unique
+
+  impressions       Int?
+  reach             Int?
+  likes             Int?
+  comments          Int?
+  shares            Int?
+  saves             Int?
+  linkClicks        Int?
+  followerGain      Int?
+  videoWatchSeconds Int?
+  engagementRate    Float?
+
+  recordedById String
+  recordedAt   DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  socialContent SocialContent @relation(fields: [socialContentId], references: [id], onDelete: Cascade)
+  recordedBy    User          @relation(fields: [recordedById], references: [id], onDelete: Cascade)
+
+  @@map("social_content_performance")
+}
+
+/// Blog + SEO + GEO alanları tek kayıtta (bkz. proje talebi §8 — spec bu
+/// alanları birlikte tutuyor, ayrı bir SEO tablosuna gerek yok).
+model BlogContent {
+  id      String @id @default(cuid())
+  teamId  String
+  brandId String?
+
+  status   ContentStatus @default(IDEA)
+  priority TaskPriority  @default(MEDIUM)
+
+  title             String
+  summary           String? @db.Text
+  body              String? @db.Text
+  category          String?
+  targetPage        String?
+  slug              String?
+  focusKeyword      String?
+  secondaryKeywords String[]
+  searchIntent      String?
+  targetAudience    String?
+  metaTitle         String?
+  metaDescription   String?
+  h1                String?
+  headingPlan       String? @db.Text
+  internalLinks     String[]
+  externalLinks     String[]
+  sources           String[]
+  schemaType        String?
+  canonicalUrl      String?
+  indexStatus       String?
+
+  // GEO (yapay zekâ arama görünürlüğü) alanları — bkz. proje talebi §8.
+  geoTargetQuestions     String[]
+  geoTargetAiQueries     String[]
+  geoDirectAnswer        String?   @db.Text
+  geoFaq                 String?   @db.Text
+  geoSourceCredibility   String?
+  geoBrandUsage          String?
+  geoStructuredDataNotes String?   @db.Text
+  geoQuotableBlocks      String?   @db.Text
+  geoFreshnessDate       DateTime?
+  geoExpertReviewed      Boolean   @default(false)
+  geoTrustedSources      String[]
+
+  wordCount          Int?
+  readingTimeMinutes Int?
+
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  publishUrl  String?
+
+  createdById     String
+  editorId        String?
+  seoReviewedById String?
+  approvedById    String?
+
+  internalNotes String?    @db.Text
+  deletedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team          Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  brand         ContentBrand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdBy     User          @relation("BlogContentCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  editor        User?         @relation("BlogContentEditor", fields: [editorId], references: [id], onDelete: SetNull)
+  seoReviewedBy User?         @relation("BlogContentSeoReviewer", fields: [seoReviewedById], references: [id], onDelete: SetNull)
+  approvedBy    User?         @relation("BlogContentApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  comments      ContentComment[]
+  mentions      ContentMention[]
+  revisions     ContentRevision[]
+  assets        ContentAsset[]
+  aiGenerations AiGeneration[]
+
+  @@index([teamId, status])
+  @@index([brandId])
+  @@index([deletedAt])
+  @@map("blog_contents")
+}
+
+/// Blog'a bağlı olmayan bağımsız SEO/GEO çalışmaları (teknik SEO kontrolü,
+/// Search Console kontrolü, rakip analizi vb. — bkz. proje talebi §8).
+model SeoWork {
+  id      String @id @default(cuid())
+  teamId  String
+  brandId String?
+
+  workType SeoWorkType
+  status   ContentStatus @default(DRAFT)
+  priority TaskPriority  @default(MEDIUM)
+
+  title        String
+  targetPage   String?
+  targetUrl    String?
+  description  String?  @db.Text
+  findings     String?  @db.Text
+  actionsTaken String?  @db.Text
+  keywords     String[]
+
+  createdById  String
+  assignedToId String?
+  approvedById String?
+
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  internalNotes String?    @db.Text
+  deletedAt     DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team       Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  brand      ContentBrand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdBy  User          @relation("SeoWorkCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  assignedTo User?         @relation("SeoWorkAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  approvedBy User?         @relation("SeoWorkApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  comments  ContentComment[]
+  mentions  ContentMention[]
+  revisions ContentRevision[]
+  assets    ContentAsset[]
+
+  @@index([teamId, status])
+  @@index([brandId])
+  @@index([deletedAt])
+  @@map("seo_works")
+}
+
+/// Sosyal medya/blog dışında, mevcut internet sitesi içerisinde yapılan
+/// içerik çalışmaları (bkz. proje talebi §10).
+model WebsiteWork {
+  id      String @id @default(cuid())
+  teamId  String
+  brandId String?
+
+  workType WebsiteWorkType
+  status   ContentStatus @default(DRAFT)
+  priority TaskPriority  @default(MEDIUM)
+
+  title             String
+  pageName          String?
+  pageUrl           String?
+  oldContent        String? @db.Text
+  newContent        String? @db.Text
+  changeDescription String? @db.Text
+  changeReason      String? @db.Text
+
+  createdById  String
+  reviewedById String?
+  approvedById String?
+
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  deletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team       Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  brand      ContentBrand? @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdBy  User          @relation("WebsiteWorkCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  reviewedBy User?         @relation("WebsiteWorkReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  approvedBy User?         @relation("WebsiteWorkApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  comments  ContentComment[]
+  mentions  ContentMention[]
+  revisions ContentRevision[]
+  assets    ContentAsset[]
+
+  @@index([teamId, status])
+  @@index([brandId])
+  @@index([deletedAt])
+  @@map("website_works")
+}
+
+/// Bir kullanıcının bir güne ait günlük çalışma raporu — Günlük Akış'taki
+/// DailyFlowEntry ile AYNI desen: teamId taşımaz, ilgili takım sorgu anında
+/// getOrCreateWorkspaceTeam(userId) ile çözülür. `@@unique([userId, date])`
+/// aynı gün için iki rapor oluşmasını veritabanı seviyesinde engeller.
+model DailyWorkReport {
+  id     String                 @id @default(cuid())
+  userId String
+  date   DateTime               @db.Date
+  status DailyWorkReportStatus  @default(SUBMITTED)
+
+  managerNote  String?   @db.Text
+  employeeNote String?   @db.Text
+  revisionNote String?   @db.Text
+  reviewedById String?
+  reviewedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User  @relation("DailyWorkReportUser", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User? @relation("DailyWorkReportReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  items    DailyWorkItem[]
+  comments ContentComment[]
+
+  @@unique([userId, date])
+  @@map("daily_work_reports")
+}
+
+/// Bir günlük raporun içindeki tek bir çalışma kalemi — bir raporda birden
+/// fazla kalem eklenebilir (bkz. proje talebi §4).
+model DailyWorkItem {
+  id       String @id @default(cuid())
+  reportId String
+  brandId  String?
+
+  category    WorkCategory
+  platform    SocialPlatform?
+  title       String
+  description String?         @db.Text
+  usedText    String?         @db.Text
+  hashtags    String[]
+  keywords    String[]
+  postUrl     String?
+  siteUrl     String?
+
+  startedAt       DateTime?
+  endedAt         DateTime?
+  durationMinutes Int?
+
+  status   ContentStatus @default(IN_PROGRESS)
+  priority TaskPriority  @default(MEDIUM)
+
+  relatedTaskId String?
+  completedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  report      DailyWorkReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  brand       ContentBrand?   @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  relatedTask Task?           @relation(fields: [relatedTaskId], references: [id], onDelete: SetNull)
+
+  mentions ContentMention[]
+  assets   ContentAsset[]
+
+  @@index([reportId])
+  @@map("daily_work_items")
+}
+
+/// İçerik yorumu + @etiketleme — ActivityLog'daki "bir kayıtta birden fazla
+/// nullable FK" desenine uygun, 4 içerik türü + günlük rapor için TEK
+/// paylaşımlı tablo (polimorfik string+id DEĞİL, gerçek FK sütunları).
+model ContentComment {
+  id       String @id @default(cuid())
+  authorId String
+
+  socialContentId   String?
+  blogContentId     String?
+  seoWorkId         String?
+  websiteWorkId     String?
+  dailyWorkReportId String?
+
+  body      String   @db.Text
+  parentId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author          User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  socialContent   SocialContent?   @relation(fields: [socialContentId], references: [id], onDelete: Cascade)
+  blogContent     BlogContent?     @relation(fields: [blogContentId], references: [id], onDelete: Cascade)
+  seoWork         SeoWork?         @relation(fields: [seoWorkId], references: [id], onDelete: Cascade)
+  websiteWork     WebsiteWork?     @relation(fields: [websiteWorkId], references: [id], onDelete: Cascade)
+  dailyWorkReport DailyWorkReport? @relation(fields: [dailyWorkReportId], references: [id], onDelete: Cascade)
+  parent          ContentComment?  @relation("ContentCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies         ContentComment[] @relation("ContentCommentReplies")
+
+  mentions ContentCommentMention[]
+  assets   ContentAsset[]
+
+  @@map("content_comments")
+}
+
+/// Bir yorum içinde @ ile etiketlenen kullanıcılar — bildirim tetikler.
+model ContentCommentMention {
+  commentId String
+  userId    String
+
+  comment ContentComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId])
+  @@map("content_comment_mentions")
+}
+
+/// İçerik/kalem seviyesinde "Etiketlenen çalışanlar" çoklu ataması —
+/// yorumdaki @etiketlemeden AYRI: bu, "bu kayıt seninle ilgili" işaretidir
+/// (FileMention/AnnouncementMention ile aynı fikir).
+model ContentMention {
+  id     String @id @default(cuid())
+  userId String
+
+  socialContentId String?
+  blogContentId   String?
+  seoWorkId       String?
+  websiteWorkId   String?
+  dailyWorkItemId String?
+
+  createdAt DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  socialContent SocialContent? @relation(fields: [socialContentId], references: [id], onDelete: Cascade)
+  blogContent   BlogContent?   @relation(fields: [blogContentId], references: [id], onDelete: Cascade)
+  seoWork       SeoWork?       @relation(fields: [seoWorkId], references: [id], onDelete: Cascade)
+  websiteWork   WebsiteWork?   @relation(fields: [websiteWorkId], references: [id], onDelete: Cascade)
+  dailyWorkItem DailyWorkItem? @relation(fields: [dailyWorkItemId], references: [id], onDelete: Cascade)
+
+  @@map("content_mentions")
+}
+
+/// Revizyon talebi geçmişi — asla silinmez (bkz. proje talebi §12: "revizyon
+/// geçmişi silinmemeli").
+model ContentRevision {
+  id            String @id @default(cuid())
+  requestedById String
+  assignedToId  String?
+
+  socialContentId String?
+  blogContentId   String?
+  seoWorkId       String?
+  websiteWorkId   String?
+
+  description String                 @db.Text
+  dueDate     DateTime?
+  status      ContentRevisionStatus  @default(OPEN)
+  resolvedAt  DateTime?
+
+  createdAt DateTime @default(now())
+
+  requestedBy   User           @relation("ContentRevisionRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  assignedTo    User?          @relation("ContentRevisionAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  socialContent SocialContent? @relation(fields: [socialContentId], references: [id], onDelete: Cascade)
+  blogContent   BlogContent?   @relation(fields: [blogContentId], references: [id], onDelete: Cascade)
+  seoWork       SeoWork?       @relation(fields: [seoWorkId], references: [id], onDelete: Cascade)
+  websiteWork   WebsiteWork?   @relation(fields: [websiteWorkId], references: [id], onDelete: Cascade)
+
+  @@map("content_revisions")
+}
+
+/// FileUpload'ı içerik kayıtlarına bağlayan katılım tablosu — aynı dosyanın
+/// farklı içeriklerde yeniden kullanılabilmesini sağlar (bkz. proje talebi
+/// §13).
+model ContentAsset {
+  id           String            @id @default(cuid())
+  fileUploadId String
+  role         ContentAssetRole  @default(OTHER)
+
+  socialContentId  String?
+  blogContentId    String?
+  seoWorkId        String?
+  websiteWorkId    String?
+  dailyWorkItemId  String?
+  contentCommentId String?
+
+  addedById String
+  createdAt DateTime @default(now())
+
+  fileUpload     FileUpload      @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+  addedBy        User            @relation(fields: [addedById], references: [id], onDelete: Cascade)
+  socialContent  SocialContent?  @relation(fields: [socialContentId], references: [id], onDelete: Cascade)
+  blogContent    BlogContent?    @relation(fields: [blogContentId], references: [id], onDelete: Cascade)
+  seoWork        SeoWork?        @relation(fields: [seoWorkId], references: [id], onDelete: Cascade)
+  websiteWork    WebsiteWork?    @relation(fields: [websiteWorkId], references: [id], onDelete: Cascade)
+  dailyWorkItem  DailyWorkItem?  @relation(fields: [dailyWorkItemId], references: [id], onDelete: Cascade)
+  contentComment ContentComment? @relation(fields: [contentCommentId], references: [id], onDelete: Cascade)
+
+  @@index([fileUploadId])
+  @@map("content_assets")
+}
+
+/// Yapay zekâ (Claude/OpenAI) ile üretilen her çıktının denetim kaydı (bkz.
+/// proje talebi §9 — "her yapay zekâ üretiminde şunları kaydet"). Üretilen
+/// içerik BURADA taslak olarak durur; ilgili SocialContent/BlogContent
+/// alanına kopyalanması ayrı, bilinçli bir kullanıcı eylemidir — hiçbir
+/// zaman otomatik yayınlanmaz.
+model AiGeneration {
+  id     String @id @default(cuid())
+  userId String
+
+  actionType AiActionType
+  model      String
+  prompt     String @db.Text
+  output     String @db.Text
+
+  promptTokens     Int?
+  completionTokens Int?
+  estimatedCostUsd Float?
+
+  decision     AiOutputDecision @default(PENDING)
+  editedOutput String?          @db.Text
+
+  socialContentId String?
+  blogContentId   String?
+
+  createdAt DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  socialContent SocialContent? @relation(fields: [socialContentId], references: [id], onDelete: SetNull)
+  blogContent   BlogContent?   @relation(fields: [blogContentId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@map("ai_generations")
+}

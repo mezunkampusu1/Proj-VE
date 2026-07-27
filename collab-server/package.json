@@ -1,0 +1,24 @@
+{
+  "name": "ortak-alan-collab-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ortak Alan modülü için Yjs/Hocuspocus tabanlı gerçek zamanlı işbirliği servisi. Ana Next.js uygulamasından bağımsız bir süreç olarak çalışır; kalıcılık için doğrudan Postgres'e (ham SQL ile, Prisma client üretimine gerek kalmadan) bağlanır.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@hocuspocus/server": "^2.15.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.13.1",
+    "tsx": "^4.23.0",
+    "y-prosemirror": "^1.2.15",
+    "yjs": "^13.6.20"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/pg": "^8.11.10",
+    "typescript": "^5"
+  }
+}

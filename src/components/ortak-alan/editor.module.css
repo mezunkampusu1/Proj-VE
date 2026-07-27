@@ -1,0 +1,191 @@
+.editorRoot :global(.ProseMirror) {
+  min-height: 60vh;
+  outline: none;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--foreground);
+}
+
+.editorRoot :global(.ProseMirror p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.editorRoot :global(.ProseMirror h1) {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.5rem;
+}
+.editorRoot :global(.ProseMirror h2) {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 1.1rem 0 0.4rem;
+}
+.editorRoot :global(.ProseMirror h3) {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 1rem 0 0.35rem;
+}
+.editorRoot :global(.ProseMirror p) {
+  margin: 0.4rem 0;
+}
+.editorRoot :global(.ProseMirror blockquote) {
+  border-left: 3px solid var(--border);
+  padding-left: 0.9rem;
+  color: var(--muted-foreground);
+  margin: 0.6rem 0;
+}
+.editorRoot :global(.ProseMirror pre) {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+  border-radius: 0.6rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+}
+.editorRoot :global(.ProseMirror code) {
+  background: var(--secondary);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.85em;
+}
+.editorRoot :global(.ProseMirror pre code) {
+  background: none;
+  padding: 0;
+}
+.editorRoot :global(.ProseMirror hr) {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.25rem 0;
+}
+.editorRoot :global(.ProseMirror a) {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.editorRoot :global(.ProseMirror img) {
+  max-width: 100%;
+  border-radius: 0.5rem;
+}
+.editorRoot :global(.ProseMirror mark) {
+  border-radius: 2px;
+  padding: 0.05rem 0.1rem;
+}
+.editorRoot :global(.ProseMirror ul),
+.editorRoot :global(.ProseMirror ol) {
+  padding-left: 1.4rem;
+  margin: 0.4rem 0;
+}
+/* Tailwind'in global reset'i (preflight) tüm ul/ol için list-style: none
+   uyguluyor; bu yüzden madde imleri/numaraları burada AÇIKÇA geri
+   eklenmezse görünmez oluyordu (ekran görüntüsünde "beyaz/boş çıkıyor"
+   olarak bildirildi). Renk de ayrıca belirtiliyor çünkü ::marker bazı
+   tarayıcılarda metin rengini miras almayabiliyor. */
+.editorRoot :global(.ProseMirror ul:not([data-type="taskList"])) {
+  list-style-type: disc;
+}
+.editorRoot :global(.ProseMirror ol) {
+  list-style-type: decimal;
+}
+.editorRoot :global(.ProseMirror ul:not([data-type="taskList"]) > li::marker),
+.editorRoot :global(.ProseMirror ol > li::marker) {
+  color: var(--foreground);
+}
+.editorRoot :global(.ProseMirror ul[data-type="taskList"]) {
+  list-style: none;
+  padding-left: 0.2rem;
+}
+.editorRoot :global(.ProseMirror ul[data-type="taskList"] li) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.editorRoot :global(.ProseMirror ul[data-type="taskList"] li > label) {
+  margin-top: 0.3rem;
+}
+/* Görev #191: daha minimalist tablo — tam kutu ızgara yerine yalnızca
+   yatay çizgiler, hafif/uppercase başlık satırı. Sütun yeniden
+   boyutlandırma tutamaçları (Table.configure({resizable:true})) kendi
+   ayrı katmanında render olduğu için dikey kenarlıkların kaldırılması
+   bu özelliği etkilemez. */
+.editorRoot :global(.ProseMirror table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.75rem 0;
+  font-size: 0.92em;
+}
+.editorRoot :global(.ProseMirror th),
+.editorRoot :global(.ProseMirror td) {
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+}
+.editorRoot :global(.ProseMirror th) {
+  background: transparent;
+  border-bottom: 1.5px solid var(--foreground);
+  font-weight: 600;
+  font-size: 0.85em;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* @mention etiketleri — bkz. document-mention.tsx */
+.editorRoot :global(.ortak-alan-mention) {
+  border-radius: 0.3rem;
+  padding: 0.05rem 0.3rem;
+  background: color-mix(in oklch, var(--primary) 15%, transparent);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Doküman içi görev bağlantısı — bkz. linked-task-item.ts */
+.editorRoot :global(li.ortak-alan-linked-task-item) {
+  position: relative;
+  border-radius: 0.375rem;
+  background: color-mix(in oklch, var(--primary) 8%, transparent);
+  padding: 0.1rem 0.35rem;
+}
+
+/* Öneri modu (track-changes) — bkz. suggestion-marks.ts */
+.editorRoot :global(ins.ortak-alan-suggestion-insert) {
+  text-decoration: none;
+  background: color-mix(in oklch, var(--primary) 18%, transparent);
+  border-bottom: 1.5px solid var(--primary);
+  color: var(--primary);
+}
+.editorRoot :global(del.ortak-alan-suggestion-delete) {
+  text-decoration: line-through;
+  background: color-mix(in oklch, var(--destructive) 14%, transparent);
+  color: var(--destructive);
+  opacity: 0.85;
+}
+
+/* Yjs / Hocuspocus canlı imleçler (CollaborationCursor eklentisi) */
+.editorRoot :global(.collaboration-cursor__caret) {
+  position: relative;
+  margin-left: -1px;
+  margin-right: -1px;
+  border-left: 1.5px solid;
+  border-right: 1.5px solid;
+  word-break: normal;
+  pointer-events: none;
+}
+.editorRoot :global(.collaboration-cursor__label) {
+  position: absolute;
+  top: -1.35em;
+  left: -1.5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.35rem;
+  color: #fff;
+  user-select: none;
+}

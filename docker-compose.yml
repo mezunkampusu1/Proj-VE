@@ -1,0 +1,80 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-followup}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-followup}
+      POSTGRES_DB: ${POSTGRES_DB:-followup}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-followup}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      target: builder
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npx", "prisma", "migrate", "deploy"]
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      COLLAB_SECRET: ${COLLAB_SECRET}
+      # Next.js sunucusu, tarayıcıya collab WebSocket adresini bu değişkenle
+      # bildirir (bkz. src/lib/collab.ts). Docker Compose ile aynı ana
+      # makinede çalıştırıldığında varsayılan değer genelde yeterlidir;
+      # farklı bir dış adresten erişiliyorsa .env üzerinden override edin.
+      NEXT_PUBLIC_COLLAB_WS_URL: ${NEXT_PUBLIC_COLLAB_WS_URL:-ws://localhost:1234}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      # Dosyalar modülü (Faz 1) için kalıcı yükleme alanı.
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Ortak Alan modülü — Yjs/Hocuspocus tabanlı gerçek zamanlı işbirliği
+  # servisi. Ayrı bir Node süreci olarak çalışır (bkz. collab-server/).
+  collab:
+    build:
+      context: ./collab-server
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      COLLAB_SECRET: ${COLLAB_SECRET}
+      COLLAB_PORT: 1234
+    ports:
+      - "${COLLAB_PORT:-1234}:1234"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
+  uploads_data:

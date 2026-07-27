@@ -1,0 +1,269 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Durum/etiket "tint" renkleri — Badge, bildirim ikonları, banner'lar gibi
+     tüm renkli-rozet kullanım yerleri buradan beslenir. Açık/koyu temada
+     ayrı ayrı tanımlanır ki kontrast her ikisinde de doğru olsun (bkz. alt
+     kısımdaki :root / .dark blokları). */
+  --color-tint-slate: var(--muted);
+  --color-tint-slate-foreground: var(--muted-foreground);
+  --color-tint-blue: var(--tint-blue-bg);
+  --color-tint-blue-foreground: var(--tint-blue-fg);
+  --color-tint-amber: var(--tint-amber-bg);
+  --color-tint-amber-foreground: var(--tint-amber-fg);
+  --color-tint-red: var(--tint-red-bg);
+  --color-tint-red-foreground: var(--tint-red-fg);
+  --color-tint-green: var(--tint-green-bg);
+  --color-tint-green-foreground: var(--tint-green-fg);
+  --color-tint-violet: var(--tint-violet-bg);
+  --color-tint-violet-foreground: var(--tint-violet-fg);
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 12px);
+}
+
+/*
+ * Premium, kişiselleştirilebilir tema sistemi — açık ve koyu mod tam destekli
+ * (bkz. ThemeProvider/ThemeToggle, src/components/theme-provider.tsx).
+ * Her iki temada da aynı marka rengi (primary) korunur, yalnızca kontrast
+ * için ton ayarlanır. Varsayılan (JS çalışmadan önce, no-JS durumunda)
+ * koyu temadır — bkz. src/app/layout.tsx'teki engelleyici script.
+ */
+:root {
+  --radius: 0.75rem;
+
+  --background: oklch(0.984 0.004 260);
+  --foreground: oklch(0.23 0.02 260);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.23 0.02 260);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.23 0.02 260);
+
+  --primary: oklch(0.55 0.19 265);
+  --primary-foreground: oklch(0.99 0.005 260);
+
+  --secondary: oklch(0.96 0.006 260);
+  --secondary-foreground: oklch(0.32 0.02 260);
+
+  --muted: oklch(0.96 0.006 260);
+  --muted-foreground: oklch(0.52 0.02 260);
+
+  --accent: oklch(0.945 0.014 265);
+  --accent-foreground: oklch(0.32 0.02 260);
+
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.99 0.005 260);
+
+  --border: oklch(0.9 0.008 260);
+  --input: oklch(0.88 0.008 260);
+  --ring: oklch(0.55 0.19 265 / 45%);
+
+  --tint-blue-bg: oklch(0.94 0.03 258);
+  --tint-blue-fg: oklch(0.45 0.17 258);
+  --tint-amber-bg: oklch(0.95 0.05 85);
+  --tint-amber-fg: oklch(0.48 0.13 60);
+  --tint-red-bg: oklch(0.94 0.04 20);
+  --tint-red-fg: oklch(0.5 0.19 25);
+  --tint-green-bg: oklch(0.94 0.045 155);
+  --tint-green-fg: oklch(0.45 0.12 155);
+  --tint-violet-bg: oklch(0.94 0.035 300);
+  --tint-violet-fg: oklch(0.47 0.16 295);
+
+  --shadow-card: 0 1px 2px oklch(0.2 0.02 260 / 5%), 0 2px 8px oklch(0.2 0.02 260 / 6%);
+  --shadow-card-hover: 0 2px 4px oklch(0.2 0.02 260 / 6%), 0 8px 20px oklch(0.2 0.02 260 / 9%);
+  --shadow-popover: 0 4px 10px oklch(0.2 0.02 260 / 7%), 0 12px 28px oklch(0.2 0.02 260 / 10%);
+  --shadow-modal: 0 8px 20px oklch(0.2 0.02 260 / 10%), 0 24px 60px oklch(0.2 0.02 260 / 16%);
+
+  /* Startup/ürün kimliği: gradyan marka rengi + renkli "glow" gölge —
+     düz tek-renk primary yerine, buton/aktif-nav/logo gibi vurgulu
+     yerlerde kullanılır (bkz. Button, AppShell, auth layout). */
+  --gradient-primary: linear-gradient(135deg, oklch(0.58 0.19 265) 0%, oklch(0.6 0.19 305) 100%);
+  --shadow-glow-primary: 0 2px 8px oklch(0.55 0.19 265 / 22%), 0 10px 24px oklch(0.55 0.19 285 / 22%);
+  --shadow-glow-primary-hover: 0 4px 14px oklch(0.55 0.19 265 / 30%), 0 16px 34px oklch(0.55 0.19 285 / 28%);
+  --bg-wash: radial-gradient(ellipse 90% 55% at 50% -12%, oklch(0.58 0.19 265 / 7%), transparent 60%);
+
+  color-scheme: light;
+}
+
+.dark {
+  --radius: 0.75rem;
+
+  --background: oklch(0.145 0.01 260);
+  --foreground: oklch(0.96 0.005 260);
+
+  --card: oklch(0.19 0.012 260);
+  --card-foreground: oklch(0.96 0.005 260);
+
+  --popover: oklch(0.21 0.013 260);
+  --popover-foreground: oklch(0.96 0.005 260);
+
+  --primary: oklch(0.62 0.19 265);
+  --primary-foreground: oklch(0.98 0.005 260);
+
+  --secondary: oklch(0.24 0.012 260);
+  --secondary-foreground: oklch(0.9 0.005 260);
+
+  --muted: oklch(0.24 0.012 260);
+  --muted-foreground: oklch(0.63 0.015 260);
+
+  --accent: oklch(0.27 0.02 265);
+  --accent-foreground: oklch(0.96 0.005 260);
+
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(0.98 0.005 260);
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.62 0.19 265 / 50%);
+
+  --tint-blue-bg: oklch(0.62 0.19 258 / 16%);
+  --tint-blue-fg: oklch(0.75 0.13 254);
+  --tint-amber-bg: oklch(0.65 0.15 80 / 16%);
+  --tint-amber-fg: oklch(0.79 0.14 85);
+  --tint-red-bg: oklch(0.58 0.2 25 / 16%);
+  --tint-red-fg: oklch(0.72 0.16 25);
+  --tint-green-bg: oklch(0.6 0.15 155 / 16%);
+  --tint-green-fg: oklch(0.74 0.15 155);
+  --tint-violet-bg: oklch(0.55 0.2 295 / 18%);
+  --tint-violet-fg: oklch(0.75 0.13 295);
+
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 25%), 0 2px 10px oklch(0 0 0 / 20%);
+  --shadow-card-hover: 0 2px 6px oklch(0 0 0 / 30%), 0 10px 26px oklch(0 0 0 / 26%);
+  --shadow-popover: 0 4px 12px oklch(0 0 0 / 35%), 0 16px 36px oklch(0 0 0 / 30%);
+  --shadow-modal: 0 8px 24px oklch(0 0 0 / 40%), 0 30px 70px oklch(0 0 0 / 45%);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.62 0.19 265) 0%, oklch(0.64 0.2 305) 100%);
+  --shadow-glow-primary: 0 2px 10px oklch(0.62 0.19 265 / 35%), 0 12px 28px oklch(0.6 0.19 285 / 30%);
+  --shadow-glow-primary-hover: 0 4px 16px oklch(0.62 0.19 265 / 42%), 0 18px 40px oklch(0.6 0.19 285 / 36%);
+  --bg-wash: radial-gradient(ellipse 90% 55% at 50% -12%, oklch(0.62 0.19 265 / 12%), transparent 60%);
+
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-wash), var(--background);
+  background-attachment: fixed;
+  color: var(--foreground);
+}
+
+@keyframes blob-float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(3%, -4%) scale(1.06);
+  }
+  66% {
+    transform: translate(-3%, 3%) scale(0.96);
+  }
+}
+
+.animate-blob {
+  animation: blob-float 14s ease-in-out infinite;
+}
+
+/* Kanban panosu gün/filtre değişiminde ve görev kartı sürükle-bırakında
+   kullanılan geçiş efektleri (bkz. görev #198 — "kaydırırken çok amatör
+   duruyor"). Sütun içeriği `key={selectedDate}` ile her gün değişiminde
+   yeniden mount edilir; bu class o anda hafif bir kayma+belirme efekti
+   oynatır. Kart sürükleme sırasında da (bkz. task-card.tsx `isDragging`
+   prop'u) hafif küçülme+saydamlaşma uygulanır. */
+@keyframes board-fade-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-board-in {
+  animation: board-fade-slide-in 0.22s ease-out;
+}
+
+@keyframes task-card-drop {
+  from {
+    opacity: 0.6;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-task-drop {
+  animation: task-card-drop 0.18s ease-out;
+}
+
+* {
+  border-color: var(--border);
+}
+
+/* Tema (açık/koyu) geçişini yumuşatır — yalnızca sayfanın temel zemin/metin
+   rengine uygulanır; bileşenlerin kendi hover/focus geçişleri (transition-
+   colors vb.) etkilenmez, böylece mevcut etkileşim davranışı bozulmaz. */
+body {
+  transition: background-color 200ms ease-out, color 200ms ease-out;
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+  background-clip: padding-box;
+}

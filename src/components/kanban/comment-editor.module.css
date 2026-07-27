@@ -1,0 +1,62 @@
+.editorRoot :global(.ProseMirror) {
+  outline: none;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--foreground);
+}
+
+.editorRoot :global(.ProseMirror p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.editorRoot :global(.ProseMirror p) {
+  margin: 0.2rem 0;
+}
+
+.editorRoot :global(.ProseMirror img) {
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: 0.5rem;
+  margin: 0.3rem 0;
+}
+
+.editorRoot :global(.ProseMirror ul),
+.editorRoot :global(.ProseMirror ol) {
+  padding-left: 1.3rem;
+  margin: 0.3rem 0;
+}
+.editorRoot :global(.ProseMirror ul:not([data-type="taskList"])) {
+  list-style-type: disc;
+}
+.editorRoot :global(.ProseMirror ol) {
+  list-style-type: decimal;
+}
+.editorRoot :global(.ProseMirror ul:not([data-type="taskList"]) > li::marker),
+.editorRoot :global(.ProseMirror ol > li::marker) {
+  color: var(--foreground);
+}
+.editorRoot :global(.ProseMirror ul[data-type="taskList"]) {
+  list-style: none;
+  padding-left: 0.2rem;
+}
+.editorRoot :global(.ProseMirror ul[data-type="taskList"] li) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+.editorRoot :global(.ProseMirror ul[data-type="taskList"] li > label) {
+  margin-top: 0.2rem;
+}
+
+/* @mention etiketleri — bkz. document-mention.tsx (Ortak Alan ile paylaşılan) */
+.editorRoot :global(.ortak-alan-mention) {
+  border-radius: 0.3rem;
+  padding: 0.05rem 0.3rem;
+  background: color-mix(in oklch, var(--primary) 15%, transparent);
+  color: var(--primary);
+  font-weight: 600;
+}
