@@ -95,3 +95,6 @@ Auth.js v5 (`next-auth@beta`) with a single Credentials provider (email/password
 - TypeScript best practice'lerini kullan.
 - Docker, Prisma veya veritabanı dosyalarında değişiklik yapmadan önce ayrıca ve açıkça uyar.
 - Büyük işleri küçük adımlara bölerek ilerle.
+- Ben açıkça istemediğim sürece `git add`, `git commit` veya `git push` çalıştırma.
+- Kod değişiklikleri tamamlandıktan sonra commit mesajı öner, ancak çalıştırmadan önce onayımı bekle.
+- GitHub'a push işlemini her zaman ayrıca onay aldıktan sonra yap.
