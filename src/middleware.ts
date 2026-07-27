@@ -1,21 +1,23 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
-const PUBLIC_PATHS = ["/login", "/register"];
+const AUTH_ONLY_PATHS = ["/login", "/register"];
+const ALWAYS_PUBLIC_PATHS = ["/share", "/api/public"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const isAuthPage = AUTH_ONLY_PATHS.some((p) => pathname.startsWith(p));
+  const isAlwaysPublic = ALWAYS_PUBLIC_PATHS.some((p) => pathname.startsWith(p));
   const isAuthed = !!req.auth;
 
-  if (!isAuthed && !isPublic) {
+  if (!isAuthed && !isAuthPage && !isAlwaysPublic) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuthed && isPublic) {
+  if (isAuthed && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
 
