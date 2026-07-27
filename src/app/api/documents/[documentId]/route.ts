@@ -211,7 +211,12 @@ export async function DELETE(req: Request, { params }: Params) {
 
     const document = await prisma.document.update({
       where: { id: documentId },
-      data: { deletedAt: new Date() },
+      data: {
+        deletedAt: new Date(),
+        publicShareToken: null,
+        publicShareExpiresAt: null,
+        publicSharePasswordHash: null,
+      },
     });
 
     await logDocumentAudit({
