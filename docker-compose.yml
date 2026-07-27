@@ -18,6 +18,7 @@ services:
     build:
       context: .
       target: builder
+    restart: "no"
     exclude_from_hc: true
     env_file:
       - .env
@@ -46,15 +47,10 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       COLLAB_SECRET: ${COLLAB_SECRET}
-      # Next.js sunucusu, tarayıcıya collab WebSocket adresini bu değişkenle
-      # bildirir (bkz. src/lib/collab.ts). Docker Compose ile aynı ana
-      # makinede çalıştırıldığında varsayılan değer genelde yeterlidir;
-      # farklı bir dış adresten erişiliyorsa .env üzerinden override edin.
       NEXT_PUBLIC_COLLAB_WS_URL: ${NEXT_PUBLIC_COLLAB_WS_URL:-ws://localhost:1234}
     ports:
       - "${APP_PORT:-3000}:3000"
     volumes:
-      # Dosyalar modülü (Faz 1) için kalıcı yükleme alanı.
       - uploads_data:/app/uploads
     depends_on:
       postgres:
@@ -62,8 +58,6 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  # Ortak Alan modülü — Yjs/Hocuspocus tabanlı gerçek zamanlı işbirliği
-  # servisi. Ayrı bir Node süreci olarak çalışır (bkz. collab-server/).
   collab:
     build:
       context: ./collab-server
