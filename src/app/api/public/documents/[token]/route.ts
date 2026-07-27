@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
+import { getClientIp } from "@/lib/activity";
+import { isRateLimited, recordFailure, resetRateLimit } from "@/lib/rate-limit";
+
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const RATE_LIMIT_MAX_ATTEMPTS = 5;
 
 interface Params {
   params: Promise<{ token: string }>;
@@ -74,10 +79,21 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ error: "Şifre gerekli." }, { status: 400 });
   }
 
+  const rateLimitKey = `${getClientIp(req) ?? "unknown"}:${token}`;
+  if (isRateLimited(rateLimitKey, RATE_LIMIT_MAX_ATTEMPTS, RATE_LIMIT_WINDOW_MS)) {
+    return NextResponse.json(
+      { error: "Çok fazla başarısız deneme. Lütfen 15 dakika sonra tekrar deneyin." },
+      { status: 429 },
+    );
+  }
+
   const valid = await verifyPassword(parsed.data.password, document.publicSharePasswordHash);
   if (!valid) {
+    recordFailure(rateLimitKey, RATE_LIMIT_WINDOW_MS);
     return NextResponse.json({ error: "Şifre yanlış." }, { status: 403 });
   }
+
+  resetRateLimit(rateLimitKey);
 
   return NextResponse.json({
     requiresPassword: false,
