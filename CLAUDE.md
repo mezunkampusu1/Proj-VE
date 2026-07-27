@@ -98,3 +98,16 @@ Auth.js v5 (`next-auth@beta`) with a single Credentials provider (email/password
 - Ben açıkça istemediğim sürece `git add`, `git commit` veya `git push` çalıştırma.
 - Kod değişiklikleri tamamlandıktan sonra commit mesajı öner, ancak çalıştırmadan önce onayımı bekle.
 - GitHub'a push işlemini her zaman ayrıca onay aldıktan sonra yap.
+
+## Git Commit Politikası
+
+- Her commit yalnızca tek bir mantıksal değişiklik içermelidir.
+- Yapılandırma değişikliklerini (.gitignore, CLAUDE.md, Docker, package.json vb.) ayrı commit olarak oluştur.
+- Bug düzeltmelerini ayrı commit olarak oluştur.
+- Yeni özellikleri ayrı commit olarak oluştur.
+- Refactor işlemlerini ayrı commit olarak oluştur.
+- Prisma migration dosyalarını başka değişikliklerle aynı commit'e koyma.
+- Commit önermeden önce `git diff` ile değişiklikleri özetle.
+- Test edilebilen değişikliklerde hangi testleri çalıştırdığını ve sonucunu belirt.
+- Commit mesajını öner, onayımı al, ardından commit oluştur.
+- Push için her zaman ayrıca onay al.
