@@ -6,8 +6,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-followup}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-followup}
       POSTGRES_DB: ${POSTGRES_DB:-followup}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -33,7 +31,15 @@ services:
     build:
       context: .
       target: runner
+      args:
+        NEXT_PUBLIC_COLLAB_WS_URL: ${NEXT_PUBLIC_COLLAB_WS_URL}
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/login"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     env_file:
       - .env
     environment:
@@ -61,6 +67,12 @@ services:
     build:
       context: ./collab-server
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:1234"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     env_file:
       - .env
     environment:
