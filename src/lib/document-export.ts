@@ -172,6 +172,28 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** "//evil.example" gibi protokolden bağımsız dış URL'leri DIŞLAR — yalnızca tek "/" ile başlayan kök-relative yolları kabul eder. */
+function isRootRelativeUrl(url: string): boolean {
+  return url.startsWith("/") && !url.startsWith("//");
+}
+
+/** Paylaşılan/dışa aktarılan HTML'e yazılacak link URL'leri için allow-list — javascript:/data:/vbscript: gibi şemaları reddeder. */
+function isSafeLinkUrl(url: string): boolean {
+  const trimmed = url.trim();
+  return (
+    /^https?:\/\//i.test(trimmed) ||
+    /^mailto:/i.test(trimmed) ||
+    isRootRelativeUrl(trimmed) ||
+    trimmed.startsWith("#")
+  );
+}
+
+/** Görsel URL'leri için ayrı, daha dar allow-list — mailto/# link'lerde anlamlı olsa da görsel kaynağı için değildir. */
+function isSafeImageUrl(url: string): boolean {
+  const trimmed = url.trim();
+  return /^https?:\/\//i.test(trimmed) || isRootRelativeUrl(trimmed);
+}
+
 function htmlInline(node: PMNode): string {
   if (node.type === "text") {
     let text = escapeHtml(node.text || "");
@@ -184,12 +206,19 @@ function htmlInline(node: PMNode): string {
     if (marks.some((m) => m.type === "suggestionInsert")) text = `<ins>${text}</ins>`;
     if (marks.some((m) => m.type === "suggestionDelete")) text = `<del>${text}</del>`;
     const link = marks.find((m) => m.type === "link");
-    if (link) text = `<a href="${escapeHtml((link.attrs?.href as string) || "")}">${text}</a>`;
+    if (link) {
+      const href = ((link.attrs?.href as string) || "").trim();
+      if (isSafeLinkUrl(href)) text = `<a href="${escapeHtml(href)}">${text}</a>`;
+    }
     return text;
   }
   if (node.type === "hardBreak") return "<br/>";
   if (node.type === "mention") return `<strong>@${escapeHtml((node.attrs?.label as string) || "")}</strong>`;
-  if (node.type === "image") return `<img src="${escapeHtml((node.attrs?.src as string) || "")}" alt="${escapeHtml((node.attrs?.alt as string) || "")}" />`;
+  if (node.type === "image") {
+    const src = ((node.attrs?.src as string) || "").trim();
+    if (!isSafeImageUrl(src)) return "";
+    return `<img src="${escapeHtml(src)}" alt="${escapeHtml((node.attrs?.alt as string) || "")}" />`;
+  }
   return (node.content || []).map(htmlInline).join("");
 }
 
