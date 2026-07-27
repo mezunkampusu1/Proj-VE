@@ -18,7 +18,7 @@ interface SharedDoc {
 type State =
   | { phase: "loading" }
   | { phase: "invalid" }
-  | { phase: "password"; title: string }
+  | { phase: "password" }
   | { phase: "ready"; doc: SharedDoc };
 
 /** Bu bileşenin çevresinde bir AppShell YOKTUR — dış kullanıcılar için sade, bağımsız bir görünüm. */
@@ -37,7 +37,7 @@ export function PublicShareView({ token }: { token: string }) {
         }
         const json = await r.json();
         if (json.requiresPassword) {
-          setState({ phase: "password", title: json.title });
+          setState({ phase: "password" });
         } else {
           setState({ phase: "ready", doc: json });
         }
@@ -90,7 +90,7 @@ export function PublicShareView({ token }: { token: string }) {
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4">
         <Lock className="h-8 w-8 text-muted-foreground" />
         <div className="text-center">
-          <h1 className="text-lg font-semibold text-foreground">{state.title}</h1>
+          <h1 className="text-lg font-semibold text-foreground">Şifre korumalı doküman</h1>
           <p className="text-sm text-muted-foreground">Bu doküman şifre ile korunuyor.</p>
         </div>
         <div className="flex w-full max-w-xs flex-col gap-2">

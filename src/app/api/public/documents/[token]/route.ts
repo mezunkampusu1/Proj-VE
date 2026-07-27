@@ -47,7 +47,7 @@ export async function GET(_req: Request, { params }: Params) {
   }
 
   if (document.publicSharePasswordHash) {
-    return NextResponse.json({ requiresPassword: true, title: document.title });
+    return NextResponse.json({ requiresPassword: true });
   }
 
   return NextResponse.json({
