@@ -3,7 +3,33 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+/**
+ * Sabit sistem doküman türleri (bkz. src/lib/document-format.ts) — Ortak
+ * Alan istemcisi bu ID'leri (`dt_word`/`dt_excel`) hardcoded gönderdiği için
+ * her ortamda (dev/prod) bu iki kaydın var olması zorunlu. `POST
+ * /api/document-types` kasıtlı olarak devre dışı bırakıldığından bu kayıtlar
+ * başka hiçbir yerde oluşturulmuyor; upsert `update` bölümü de dolduruldu ki
+ * biri isSystem/slug/name alanlarını elle yanlış düzenlerse seed tekrar
+ * çalıştırıldığında doğru değerlere geri dönsün.
+ */
+const documentTypeDefaults: Array<{ id: string; name: string; slug: string; isSystem: boolean }> = [
+  { id: "dt_word", name: "Word", slug: "word", isSystem: true },
+  { id: "dt_excel", name: "Excel", slug: "excel", isSystem: true },
+];
+
+async function ensureDocumentTypes() {
+  for (const dt of documentTypeDefaults) {
+    await prisma.documentType.upsert({
+      where: { id: dt.id },
+      update: { name: dt.name, slug: dt.slug, isSystem: dt.isSystem },
+      create: dt,
+    });
+  }
+}
+
 async function main() {
+  await ensureDocumentTypes();
+
   const password = await bcrypt.hash("password123", 12);
 
   const owner = await prisma.user.upsert({
@@ -112,6 +138,7 @@ async function main() {
   }
 
   console.log("Seed tamamlandı:");
+  console.log(`  Doküman türleri: ${documentTypeDefaults.map((dt) => dt.slug).join(", ")}`);
   console.log(`  Takım: ${team.name} (${team.slug})`);
   console.log(`  Proje: ${project.name}`);
   console.log("  Giriş bilgileri: demo@follow-up.local / password123");
