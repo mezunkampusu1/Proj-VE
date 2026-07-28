@@ -80,7 +80,7 @@ services:
       COLLAB_SECRET: ${COLLAB_SECRET}
       COLLAB_PORT: 1234
     ports:
-      - "${COLLAB_PORT:-1234}:1234"
+      - "${COLLAB_HOST_PORT:-1234}:1234"
     depends_on:
       postgres:
         condition: service_healthy
