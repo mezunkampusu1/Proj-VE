@@ -19,7 +19,7 @@ services:
       context: .
       target: builder
     restart: "no"
-    exclude_from_hc: true
+    #exclude_from_hc: true
     env_file:
       - .env
     environment:
@@ -27,7 +27,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["npx", "prisma", "migrate", "deploy"]
+    command:
+      - sh
+      - -c
+      - |
+        npx prisma migrate deploy &&
+        npx tsx prisma/scripts/ensure-document-types.ts
 
   app:
     build:
