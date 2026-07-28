@@ -194,6 +194,25 @@ function isSafeImageUrl(url: string): boolean {
   return /^https?:\/\//i.test(trimmed) || isRootRelativeUrl(trimmed);
 }
 
+/**
+ * `image` node hem inline (paragraf içi metin akışında) hem de block (doc.content'te
+ * doğrudan bir eleman olarak — bkz. resizable-image.tsx: @tiptap/extension-image'da
+ * `group: "block"`) konumda karşımıza çıkabiliyor. Bu yüzden hem `htmlInline`'dan hem
+ * de `documentToHtml`'in block switch'inden aynı güvenli üretim mantığı çağrılır —
+ * kopya kod / iki farklı escape davranışı riskini önlemek için tek yerde toplanmıştır.
+ */
+function renderImageHtml(node: PMNode): string {
+  const src = ((node.attrs?.src as string) || "").trim();
+  if (!src || !isSafeImageUrl(src)) return "";
+  const alt = escapeHtml((node.attrs?.alt as string) || "");
+  const width = node.attrs?.width;
+  const style =
+    typeof width === "number" && Number.isFinite(width) && width > 0
+      ? `width:${Math.round(width)}px;height:auto`
+      : "max-width:100%;height:auto";
+  return `<img src="${escapeHtml(src)}" alt="${alt}" style="${style}" />`;
+}
+
 function htmlInline(node: PMNode): string {
   if (node.type === "text") {
     let text = escapeHtml(node.text || "");
@@ -214,11 +233,7 @@ function htmlInline(node: PMNode): string {
   }
   if (node.type === "hardBreak") return "<br/>";
   if (node.type === "mention") return `<strong>@${escapeHtml((node.attrs?.label as string) || "")}</strong>`;
-  if (node.type === "image") {
-    const src = ((node.attrs?.src as string) || "").trim();
-    if (!isSafeImageUrl(src)) return "";
-    return `<img src="${escapeHtml(src)}" alt="${escapeHtml((node.attrs?.alt as string) || "")}" />`;
-  }
+  if (node.type === "image") return renderImageHtml(node);
   return (node.content || []).map(htmlInline).join("");
 }
 
@@ -253,6 +268,8 @@ export function documentToHtml(doc: PMNode): string {
         return `<th>${(node.content || []).map(renderBlock).join("")}</th>`;
       case "horizontalRule":
         return "<hr/>";
+      case "image":
+        return renderImageHtml(node);
       case "listItem":
       case "taskItem":
         return (node.content || []).map(renderBlock).join("");
