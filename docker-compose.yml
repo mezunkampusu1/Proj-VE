@@ -19,7 +19,7 @@ services:
       context: .
       target: builder
     restart: "no"
-    #exclude_from_hc: true
+    exclude_from_hc: true
     env_file:
       - .env
     environment:
